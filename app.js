@@ -29,7 +29,9 @@
     },
     station: {
       lastDurationMin: 5,
-      lastCardId: null
+      lastCardId: null,
+      focusId: "",
+      touch: {}
     },
     attemptFilter: "all",
     compareId: null
@@ -105,6 +107,15 @@
         const mins = Number(raw.station.lastDurationMin);
         if ([3, 5, 10, 15].indexOf(mins) !== -1) state.station.lastDurationMin = mins;
         if (raw.station.lastCardId) state.station.lastCardId = raw.station.lastCardId;
+        if (TECHNIQUES.some((t) => t.id === raw.station.focusId)) state.station.focusId = raw.station.focusId;
+        if (raw.station.touch && typeof raw.station.touch === "object") {
+          const touch = {};
+          TECHNIQUES.forEach((t) => {
+            const n = Number(raw.station.touch[t.id]);
+            if (n > 0) touch[t.id] = n;
+          });
+          state.station.touch = touch;
+        }
       }
     } catch (_) {}
     applyAppearance();
@@ -123,7 +134,9 @@
       appearance: state.appearance,
       station: {
         lastDurationMin: state.station.lastDurationMin,
-        lastCardId: state.station.lastCardId
+        lastCardId: state.station.lastCardId,
+        focusId: state.station.focusId || "",
+        touch: state.station.touch || {}
       }
     });
     try {
@@ -186,6 +199,7 @@
     else if (state.view === "station") renderStation();
     else if (state.view === "sources") renderSources();
     else if (state.view === "attempts") renderAttempts();
+    else if (state.view === "roadmap") renderRoadmap();
     else renderStudio();
   }
 
@@ -242,6 +256,7 @@
         <div class="desk-links">
           <button class="btn btn-ghost" type="button" id="open-sources">Sources</button>
           <button class="btn btn-ghost" type="button" id="open-attempts">Attempts${state.attempts.length ? ` · ${state.attempts.length}` : ""}</button>
+          <button class="btn btn-ghost" type="button" id="open-roadmap">Roadmap</button>
         </div>
         <div class="gallery-head"><h2>Your pages</h2><p>Exercises you kept on this device</p></div>
         <div id="gallery-mount"><p class="empty-pages">Loading pages…</p></div>
@@ -284,6 +299,8 @@
     if (sourcesBtn) sourcesBtn.onclick = () => openSources();
     const attemptsBtn = document.getElementById("open-attempts");
     if (attemptsBtn) attemptsBtn.onclick = () => openAttempts();
+    const roadmapBtn = document.getElementById("open-roadmap");
+    if (roadmapBtn) roadmapBtn.onclick = () => openRoadmap();
     paintGallery();
   }
 
@@ -522,7 +539,14 @@
     }
     save();
   }
+  function noteTouch(technique) {
+    if (!TECHNIQUES.some((t) => t.id === technique)) return;
+    if (!state.station.touch) state.station.touch = {};
+    state.station.touch[technique] = (state.station.touch[technique] || 0) + 1;
+  }
   function deleteAttempt(id) {
+    const gone = state.attempts.find((a) => a.id === id);
+    if (gone) noteTouch(gone.technique);
     state.attempts = state.attempts.filter((a) => a.id !== id);
     state.sources.forEach((s) => {
       s.attemptIds = (s.attemptIds || []).filter((aid) => aid !== id);
@@ -550,6 +574,137 @@
     state.compareId = null;
     render();
     loadBook();
+  }
+  function openRoadmap() {
+    state.view = "roadmap";
+    render();
+    loadBook();
+  }
+  function prereqFor(id) {
+    const meta = book.techniques.find((t) => t.id === id);
+    if (meta && Array.isArray(meta.prereq)) return meta.prereq;
+    if (id === "lines") return [];
+    return ["lines"];
+  }
+  function cardsForTechnique(id) {
+    return practiceCards().filter((c) => c.technique === id);
+  }
+  function techniqueDone(id) {
+    const cards = cardsForTechnique(id);
+    if (cards.length) return cards.every((c) => state.attempts.some((a) => a.cardId === c.id));
+    const lessons = OBVIOUS_LESSONS[id] || [];
+    return lessons.length > 0 && lessons.every((lid) => state.completed[lid]);
+  }
+  function leadingTechnique() {
+    const touch = state.station.touch || {};
+    let best = "";
+    let bestN = 0;
+    let tie = false;
+    TECHNIQUES.forEach((t) => {
+      const n = touch[t.id] || 0;
+      if (n > bestN) {
+        best = t.id;
+        bestN = n;
+        tie = false;
+      } else if (n === bestN && n > 0) tie = true;
+    });
+    if (!best || tie) return "";
+    return best;
+  }
+  function focusRoadmap(id) {
+    state.station.focusId = id || "";
+    save();
+    render();
+  }
+  function practiceTechnique(id) {
+    state.station.focusId = id;
+    const cards = cardsForTechnique(id);
+    if (!cards.length) {
+      const lesson = (OBVIOUS_LESSONS[id] || [])[0];
+      save();
+      if (lesson) openLesson(lesson);
+      return;
+    }
+    const fresh = cards.find((c) => !state.attempts.some((a) => a.cardId === c.id));
+    openStation((fresh || cards[0]).id);
+  }
+  function renderRoadmap() {
+    if (pad) {
+      pad.destroy();
+      pad = null;
+    }
+    const focus = state.station.focusId;
+    const focused = TECHNIQUES.some((t) => t.id === focus) ? focus : "";
+    if (focused) {
+      const meta = techniqueMeta(focused);
+      const prereq = prereqFor(focused).map((id) => techniqueMeta(id).title || id);
+      const cards = cardsForTechnique(focused);
+      const lessons = lessonsForTechnique(focused);
+      app.innerHTML = `
+        <div class="library">
+          <div class="record-head">
+            <div>
+              <button class="btn btn-ghost" type="button" id="roadmap-all">All techniques</button>
+              <h1>${esc(meta.title || focused)}</h1>
+              <p class="lede">${esc(meta.coach || "Start here, or anywhere else.")}</p>
+              <p class="source-meta">${prereq.length ? `Suggested after ${esc(prereq.join(", "))}. Not required.` : "No suggested path. Start anywhere."}</p>
+            </div>
+            <button class="btn btn-ink" type="button" id="roadmap-practice">Practice</button>
+          </div>
+          ${cards.length ? `<div class="card-nodes">${cards.map((c) => `
+            <button class="node ${state.attempts.some((a) => a.cardId === c.id) ? "done" : ""}" type="button" data-card="${esc(c.id)}">
+              <b>${esc(c.title)}</b>
+              <i>${state.attempts.some((a) => a.cardId === c.id) ? "Practiced" : esc(c.coach || "")}</i>
+            </button>`).join("")}</div>` : `<p class="empty-pages">No station card yet. Open a lesson.</p>`}
+          <div class="source-actions">${lessons.map((l) => `<button class="btn btn-ghost" type="button" data-open="${esc(l.id)}">${esc(l.title)}</button>`).join("")}</div>
+        </div>`;
+      document.getElementById("roadmap-all").onclick = () => focusRoadmap("");
+      document.getElementById("roadmap-practice").onclick = () => practiceTechnique(focused);
+      app.querySelectorAll("[data-card]").forEach((el) => {
+        el.onclick = () => openStation(el.dataset.card);
+      });
+      app.querySelectorAll("[data-open]").forEach((el) => {
+        el.onclick = () => openLesson(el.dataset.open, { test: false });
+      });
+      return;
+    }
+    const child = (id) => {
+      const meta = techniqueMeta(id);
+      return `<div class="node-wrap">
+        <button class="node ${techniqueDone(id) ? "done" : ""}" type="button" data-tech="${id}">
+          <b>${esc(meta.title || id)}</b>
+          <i>${techniqueDone(id) ? "Practiced" : "Practice"}</i>
+        </button>
+        <button class="btn btn-ghost" type="button" data-zoom="${id}">Cards</button>
+      </div>`;
+    };
+    app.innerHTML = `
+      <div class="library">
+        <div class="record-head">
+          <div>
+            <button class="btn btn-ghost" type="button" id="back">Contents</button>
+            <h1>Roadmap</h1>
+            <p class="lede">A path, not a lock. Tap a technique to practice it now. Cards shows the studies inside.</p>
+          </div>
+        </div>
+        <div class="tree">
+          ${child("lines")}
+          <div class="tree-stem"></div>
+          <div class="tree-branches">
+            ${child("hatching")}
+            ${child("trees")}
+            ${child("architecture")}
+          </div>
+        </div>
+        <p class="source-meta">Lines are a suggestion for the others. They are not required.</p>
+      </div>`;
+    document.getElementById("back").onclick = () => showLibrary();
+    app.querySelectorAll("[data-tech]").forEach((el) => {
+      el.onclick = () => practiceTechnique(el.dataset.tech);
+    });
+    app.querySelectorAll("[data-zoom]").forEach((el) => {
+      el.onclick = () => focusRoadmap(el.dataset.zoom);
+    });
   }
   function lessonChecks(technique, selected) {
     const chosen = selected || OBVIOUS_LESSONS[technique] || [];
@@ -817,7 +972,10 @@
     });
     app.querySelectorAll("[data-attempt]").forEach((el) => {
       el.onclick = () => {
+        const row = state.attempts.find((a) => a.id === el.dataset.attempt);
+        if (row) noteTouch(row.technique);
         state.compareId = el.dataset.attempt;
+        save();
         render();
       };
     });
@@ -1282,6 +1440,15 @@
   }
   function pickStationCard() {
     const cards = practiceCards();
+    const lead = leadingTechnique();
+    if (lead) {
+      const inLead = cards.filter((c) => c.technique === lead);
+      const fresh = inLead.find((c) => !state.attempts.some((a) => a.cardId === c.id));
+      if (fresh) return fresh;
+      const lastLead = cardById(state.station.lastCardId);
+      if (lastLead && lastLead.technique === lead) return lastLead;
+      if (inLead[0]) return inLead[0];
+    }
     const last = cardById(state.station.lastCardId);
     if (last) return last;
     const unfinished = cards.find((c) => !state.attempts.some((a) => a.cardId === c.id));
@@ -1297,11 +1464,20 @@
     if (state.appearance.mode === "focus") return false;
     return !!state.appearance[flag];
   }
-  function openStation() {
-    const card = pickStationCard();
+  function openStation(cardId) {
+    const lead = cardId ? "" : leadingTechnique();
+    if (!cardId && lead && !cardsForTechnique(lead).length) {
+      const lesson = (OBVIOUS_LESSONS[lead] || [])[0];
+      if (lesson) {
+        openLesson(lesson);
+        return;
+      }
+    }
+    const card = (cardId && cardById(cardId)) || pickStationCard();
     if (!card) return;
     stationCardId = card.id;
     state.station.lastCardId = card.id;
+    if (cardId && card.technique) state.station.focusId = card.technique;
     stationPhase = "idle";
     stationEndsAt = 0;
     wakeNote = "";
@@ -2091,7 +2267,11 @@
         render();
         return;
       }
-      if (state.view === "sources" || state.view === "attempts") {
+      if (state.view === "roadmap" && state.station.focusId) {
+        focusRoadmap("");
+        return;
+      }
+      if (state.view === "sources" || state.view === "attempts" || state.view === "roadmap") {
         showLibrary();
         return;
       }
