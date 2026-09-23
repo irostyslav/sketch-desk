@@ -7,6 +7,8 @@ A beginner’s drawing workbook you can keep open as a reference. Each chapter h
 1. **Read** the chapter when you want the words.
 2. **Watch** the pen build the drawing. Each mark has what the hand does, and why.
 3. **Practice** the exercise. Show the example, hide it, then compare.
+4. **Practice station** puts one reference on the table. Capture keeps the photo on this device.
+5. **Sources** are links and one-line notes, grouped by technique. **Attempts** puts your photo next to the reference. Nothing is scored.
 
 ## Chapters
 
@@ -27,7 +29,7 @@ Each step has a procedural ghost. Show me draws that ghost in order. Test yourse
 | `E` | Eraser |
 | `G` | Toggle ghost guide |
 | `[` `]` | Nib size |
-| `Esc` | Close a page or the finish note |
+| `Esc` | Close a page, leave Sources or Attempts, or leave the station |
 
 ## Run
 

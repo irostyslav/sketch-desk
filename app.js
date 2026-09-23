@@ -30,7 +30,22 @@
     station: {
       lastDurationMin: 5,
       lastCardId: null
-    }
+    },
+    attemptFilter: "all",
+    compareId: null
+  };
+
+  const TECHNIQUES = [
+    { id: "lines", title: "Lines" },
+    { id: "hatching", title: "Hatching" },
+    { id: "trees", title: "Trees" },
+    { id: "architecture", title: "Architecture" }
+  ];
+  const OBVIOUS_LESSONS = {
+    lines: ["lines"],
+    hatching: ["hatching"],
+    trees: ["tree-skeleton"],
+    architecture: ["shop-block"]
   };
 
   let inkMemory = { strokes: [], redo: [] };
@@ -53,6 +68,7 @@
   let wakeSentinel = null;
   let wakeNote = "";
   let captureWait = false;
+  const book = { techniques: [], sources: [], ready: false, loading: false, missing: false };
 
   function todayKey() {
     const d = new Date();
@@ -168,6 +184,8 @@
     else if (state.view === "read") renderRead();
     else if (state.view === "watch") renderWatch();
     else if (state.view === "station") renderStation();
+    else if (state.view === "sources") renderSources();
+    else if (state.view === "attempts") renderAttempts();
     else renderStudio();
   }
 
@@ -221,6 +239,10 @@
           <div><p class="eyebrow">Watch</p><p>The pen on the paper, and the thinking behind each mark.</p></div>
           <div><p class="eyebrow">Practice</p><p>Your turn. Then try it with the example hidden.</p></div>
         </div>
+        <div class="desk-links">
+          <button class="btn btn-ghost" type="button" id="open-sources">Sources</button>
+          <button class="btn btn-ghost" type="button" id="open-attempts">Attempts${state.attempts.length ? ` · ${state.attempts.length}` : ""}</button>
+        </div>
         <div class="gallery-head"><h2>Your pages</h2><p>Exercises you kept on this device</p></div>
         <div id="gallery-mount"><p class="empty-pages">Loading pages…</p></div>
         ${PATHS.map((p) => {
@@ -258,6 +280,10 @@
     if (free) free.onclick = () => openFree();
     const stationBtn = document.getElementById("open-station");
     if (stationBtn) stationBtn.onclick = () => openStation();
+    const sourcesBtn = document.getElementById("open-sources");
+    if (sourcesBtn) sourcesBtn.onclick = () => openSources();
+    const attemptsBtn = document.getElementById("open-attempts");
+    if (attemptsBtn) attemptsBtn.onclick = () => openAttempts();
     paintGallery();
   }
 
@@ -315,7 +341,486 @@
   function showLibrary() {
     state.view = "library";
     state.resumeInk = false;
+    state.compareId = null;
     render();
+  }
+
+  function uid() {
+    return (window.crypto && crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+  }
+  function safeUrl(url) {
+    const value = String(url || "").trim();
+    return /^https?:\/\//i.test(value) ? value : "";
+  }
+  function firstLine(text) {
+    const line = String(text || "").split("\n").map((s) => s.trim()).filter(Boolean)[0] || "";
+    return line.replace(/^[-*]\s+/, "");
+  }
+  function listItems(text) {
+    return String(text || "").split("\n").map((s) => s.replace(/^[-*]\s+/, "").trim()).filter(Boolean);
+  }
+  function parseMd(text) {
+    const clean = String(text || "").replace(/^\uFEFF/, "");
+    const match = clean.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    const meta = {};
+    let body = clean;
+    if (match) {
+      body = match[2];
+      match[1].split(/\r?\n/).forEach((line) => {
+        const cut = line.indexOf(":");
+        if (cut === -1) return;
+        const key = line.slice(0, cut).trim();
+        const raw = line.slice(cut + 1).trim();
+        if (raw.charAt(0) === "[" && raw.charAt(raw.length - 1) === "]") {
+          meta[key] = raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean);
+        } else {
+          meta[key] = raw.replace(/^["']|["']$/g, "");
+        }
+      });
+    }
+    const sections = {};
+    let intro = "";
+    let current = "";
+    body.split(/\r?\n/).forEach((line) => {
+      const heading = line.match(/^##\s+(.+)\s*$/);
+      if (heading) {
+        current = heading[1].trim().toLowerCase();
+        sections[current] = "";
+        return;
+      }
+      if (!current) intro += (intro ? "\n" : "") + line;
+      else sections[current] += (sections[current] ? "\n" : "") + line;
+    });
+    Object.keys(sections).forEach((key) => {
+      sections[key] = sections[key].trim();
+    });
+    return { meta, sections, intro: intro.trim() };
+  }
+  function sketchBase() {
+    const nodes = document.getElementsByTagName("script");
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const src = nodes[i].getAttribute("src") || "";
+      if (/app\.js(\?|$)/.test(src)) {
+        try { return new URL(".", nodes[i].src).href; } catch (_) { return ""; }
+      }
+    }
+    return "";
+  }
+  function loadBook() {
+    if (book.ready || book.loading) return Promise.resolve();
+    book.loading = true;
+    const base = sketchBase();
+    const finish = () => {
+      book.ready = true;
+      book.loading = false;
+      if (state.view !== "sources" && state.view !== "attempts") return;
+      const form = document.getElementById("source-form");
+      if (!form || form.hidden) render();
+    };
+    return fetch(base + "content/index.json")
+      .then((res) => {
+        if (!res.ok) throw new Error("missing");
+        return res.json();
+      })
+      .then((index) => {
+        const techIds = Array.isArray(index.techniques) ? index.techniques : [];
+        const sourceIds = Array.isArray(index.sources) ? index.sources : [];
+        const techJobs = techIds.map((id) => fetch(base + "content/techniques/" + id + ".md").then((res) => {
+          if (!res.ok) return null;
+          return res.text().then((text) => {
+            const parsed = parseMd(text);
+            return {
+              id: parsed.meta.id || id,
+              title: parsed.meta.title || id,
+              prereq: parsed.meta.prereq || [],
+              coach: firstLine(parsed.sections.coach),
+              history: parsed.sections.history || "",
+              artists: listItems(parsed.sections.artists),
+              world: firstLine(parsed.sections.world)
+            };
+          });
+        }));
+        const sourceJobs = sourceIds.map((id) => fetch(base + "content/sources/" + id + ".md").then((res) => {
+          if (!res.ok) return null;
+          return res.text().then((text) => {
+            const parsed = parseMd(text);
+            return {
+              id: parsed.meta.id || id,
+              technique: parsed.meta.technique || "",
+              title: parsed.meta.title || id,
+              url: safeUrl(parsed.meta.url),
+              note: firstLine(parsed.sections.note || parsed.intro),
+              lessonIds: parsed.meta.lessonIds || [],
+              fromBook: true,
+              createdAt: ""
+            };
+          });
+        }));
+        return Promise.all([Promise.all(techJobs), Promise.all(sourceJobs)]);
+      })
+      .then((parts) => {
+        book.techniques = parts[0].filter(Boolean);
+        book.sources = parts[1].filter(Boolean);
+        book.missing = false;
+        finish();
+      })
+      .catch(() => {
+        book.missing = true;
+        finish();
+      });
+  }
+  function techniqueMeta(id) {
+    return book.techniques.find((t) => t.id === id) || TECHNIQUES.find((t) => t.id === id) || { id: id, title: id };
+  }
+  function lessonsForTechnique(technique) {
+    if (technique === "lines") return LESSONS.filter((l) => l.id === "lines");
+    if (technique === "hatching") return LESSONS.filter((l) => l.id === "hatching");
+    if (technique === "trees") return LESSONS.filter((l) => l.path === "trees");
+    if (technique === "architecture") return LESSONS.filter((l) => l.path === "architecture");
+    return [];
+  }
+  function allSources() {
+    const mine = state.sources.map((s) => Object.assign({ fromBook: false }, s));
+    const known = {};
+    mine.forEach((s) => { known[s.id] = true; });
+    const theirs = book.sources.filter((s) => !known[s.id]);
+    return theirs.concat(mine);
+  }
+  function sourcesFor(technique) {
+    return allSources().filter((s) => s.technique === technique).sort((a, b) => {
+      if (!!a.fromBook !== !!b.fromBook) return a.fromBook ? -1 : 1;
+      return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+    });
+  }
+  function attemptsForSource(sourceId) {
+    return state.attempts.filter((a) => a.sourceId === sourceId);
+  }
+  function findSource(id) {
+    return allSources().find((s) => s.id === id) || null;
+  }
+  function cardById(id) {
+    const cards = typeof CARDS === "undefined" ? [] : CARDS;
+    return cards.find((c) => c.id === id) || null;
+  }
+  function shortWhen(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months[d.getMonth()] + " " + d.getDate();
+  }
+  function setAttemptSource(attemptId, sourceId) {
+    const attempt = state.attempts.find((a) => a.id === attemptId);
+    if (!attempt) return;
+    state.sources.forEach((s) => {
+      s.attemptIds = (s.attemptIds || []).filter((id) => id !== attemptId);
+    });
+    attempt.sourceId = sourceId || null;
+    const source = state.sources.find((s) => s.id === sourceId);
+    if (source) {
+      source.attemptIds = source.attemptIds || [];
+      if (source.attemptIds.indexOf(attemptId) === -1) source.attemptIds.push(attemptId);
+    }
+    save();
+  }
+  function deleteAttempt(id) {
+    state.attempts = state.attempts.filter((a) => a.id !== id);
+    state.sources.forEach((s) => {
+      s.attemptIds = (s.attemptIds || []).filter((aid) => aid !== id);
+    });
+    if (state.compareId === id) state.compareId = null;
+    save();
+    render();
+  }
+  function deleteSource(id) {
+    state.sources = state.sources.filter((s) => s.id !== id);
+    state.attempts.forEach((a) => {
+      if (a.sourceId === id) a.sourceId = null;
+    });
+    save();
+    render();
+  }
+  function openSources() {
+    state.view = "sources";
+    state.compareId = null;
+    render();
+    loadBook();
+  }
+  function openAttempts() {
+    state.view = "attempts";
+    state.compareId = null;
+    render();
+    loadBook();
+  }
+  function lessonChecks(technique, selected) {
+    const chosen = selected || OBVIOUS_LESSONS[technique] || [];
+    const lessons = lessonsForTechnique(technique);
+    if (!lessons.length) return "";
+    return `<fieldset class="check-grid">
+      <legend>Lessons</legend>
+      ${lessons.map((l) => `<label class="check"><input type="checkbox" name="lesson" value="${esc(l.id)}" ${chosen.indexOf(l.id) !== -1 ? "checked" : ""} /> ${esc(l.title)}</label>`).join("")}
+    </fieldset>`;
+  }
+  function attemptChecks(technique) {
+    const rows = state.attempts.filter((a) => a.technique === technique && !a.sourceId).slice(0, 8);
+    if (!rows.length) return "";
+    return `<fieldset class="check-grid">
+      <legend>Link attempts</legend>
+      ${rows.map((a) => `<label class="check"><input type="checkbox" name="attempt" value="${esc(a.id)}" /> ${esc(cardById(a.cardId) ? cardById(a.cardId).title : "Attempt")} · ${esc(shortWhen(a.createdAt))}</label>`).join("")}
+    </fieldset>`;
+  }
+  function fillSourceLinks(technique) {
+    const lessons = document.getElementById("source-lessons");
+    const attempts = document.getElementById("source-attempts");
+    if (lessons) lessons.innerHTML = lessonChecks(technique);
+    if (attempts) attempts.innerHTML = attemptChecks(technique);
+  }
+  function renderSources() {
+    if (pad) {
+      pad.destroy();
+      pad = null;
+    }
+    const groups = TECHNIQUES.map((tech) => {
+      const meta = techniqueMeta(tech.id);
+      const sources = sourcesFor(tech.id);
+      const coach = meta.coach ? `<p class="technique-line">${esc(meta.coach)}</p>` : "";
+      const artists = meta.artists && meta.artists.length ? `<p class="source-meta">${esc(meta.artists.join(", "))}</p>` : "";
+      const cards = sources.length
+        ? sources.map((s) => {
+        const lessons = (s.lessonIds || []).filter((id) => LESSONS.some((l) => l.id === id));
+        const attempts = attemptsForSource(s.id);
+        const href = safeUrl(s.url);
+        return `<article class="source-card">
+          <p class="eyebrow">${s.fromBook ? "In the book" : "Yours"}</p>
+          <h3>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : esc(s.title)}</h3>
+          <p>${esc(s.note || "")}</p>
+          <div class="source-actions">
+            ${lessons.map((id) => `<button class="btn btn-ghost" type="button" data-read="${esc(id)}">${esc((LESSONS.find((l) => l.id === id) || {}).title || id)}</button>`).join("")}
+            ${attempts.length ? `<span class="source-meta">${attempts.length} attempt${attempts.length === 1 ? "" : "s"}</span>` : ""}
+            ${s.fromBook ? "" : `<button class="btn btn-ghost danger" type="button" data-delete-source="${esc(s.id)}">Remove</button>`}
+          </div>
+        </article>`;
+        }).join("")
+        : (book.ready ? `<p class="empty-pages">No sources under ${esc(tech.title.toLowerCase())} yet.</p>` : "");
+      return `<section class="source-group"><h2>${esc(meta.title || tech.title)}</h2>${coach}${artists}${cards}</section>`;
+    }).join("");
+    app.innerHTML = `
+      <div class="library">
+        <div class="record-head">
+          <div>
+            <button class="btn btn-ghost" type="button" id="back">Contents</button>
+            <h1>Sources</h1>
+            <p class="lede">Links you can return to, grouped by the technique they teach.</p>
+          </div>
+          <button class="btn btn-ink" type="button" id="add-source">Add a source</button>
+        </div>
+        ${book.missing ? `<p class="empty-pages">The chapter notes did not load. Sources you add still stay on this device.</p>` : ""}
+        <form class="source-form" id="source-form" hidden>
+          <label>Title <input name="title" maxlength="80" required /></label>
+          <label>URL <input name="url" type="url" inputmode="url" placeholder="https://" /></label>
+          <label>What you learned <input name="note" maxlength="140" placeholder="One line" /></label>
+          <label>Technique
+            <select name="technique">
+              ${TECHNIQUES.map((t) => `<option value="${t.id}">${esc(t.title)}</option>`).join("")}
+            </select>
+          </label>
+          <div id="source-lessons"></div>
+          <div id="source-attempts"></div>
+          <div class="source-actions">
+            <button class="btn btn-ink" type="submit">Save source</button>
+            <button class="btn btn-ghost" type="button" id="cancel-source">Cancel</button>
+          </div>
+        </form>
+        ${groups}
+        <div class="toast" id="toast"></div>
+      </div>`;
+    document.getElementById("back").onclick = () => showLibrary();
+    app.querySelectorAll("[data-read]").forEach((el) => {
+      el.onclick = () => openRead(el.dataset.read);
+    });
+    const form = document.getElementById("source-form");
+    const add = document.getElementById("add-source");
+    add.onclick = () => {
+      form.hidden = false;
+      add.hidden = true;
+      fillSourceLinks(form.technique.value);
+      form.title.focus();
+    };
+    document.getElementById("cancel-source").onclick = () => {
+      form.hidden = true;
+      add.hidden = false;
+      form.reset();
+    };
+    form.technique.onchange = () => fillSourceLinks(form.technique.value);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const title = form.title.value.trim();
+      if (!title) return;
+      const typed = form.url.value.trim();
+      if (typed && !safeUrl(typed)) {
+        toast("Use a full http or https link.");
+        return;
+      }
+      const technique = form.technique.value;
+      const lessonIds = Array.prototype.map.call(form.querySelectorAll("input[name=lesson]:checked"), (el) => el.value);
+      const attemptIds = Array.prototype.map.call(form.querySelectorAll("input[name=attempt]:checked"), (el) => el.value);
+      const source = {
+        id: uid(),
+        technique: technique,
+        title: title,
+        url: safeUrl(typed),
+        note: form.note.value.trim(),
+        lessonIds: lessonIds,
+        attemptIds: attemptIds.slice(),
+        createdAt: new Date().toISOString()
+      };
+      state.sources.unshift(source);
+      attemptIds.forEach((id) => setAttemptSource(id, source.id));
+      save();
+      render();
+      toast("Saved.");
+    };
+    app.querySelectorAll("[data-delete-source]").forEach((el) => {
+      el.onclick = () => {
+        if (el.dataset.armed !== "1") {
+          el.dataset.armed = "1";
+          el.textContent = "Remove this source?";
+          return;
+        }
+        deleteSource(el.dataset.deleteSource);
+      };
+    });
+  }
+  function filteredAttempts() {
+    const list = state.attempts.slice();
+    if (state.attemptFilter === "all") return list;
+    return list.filter((a) => a.technique === state.attemptFilter);
+  }
+  function paintCompareGuide() {
+    const canvas = document.getElementById("compare-guide");
+    const attempt = state.attempts.find((a) => a.id === state.compareId);
+    if (!canvas || !attempt) return;
+    const card = cardById(attempt.cardId);
+    const guide = card && GUIDES[card.guide];
+    const w = canvas.clientWidth || 320;
+    const h = Math.round(w * 4 / 3);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "#f3eee4";
+    ctx.fillRect(0, 0, w, h);
+    if (typeof guide === "function") guide(ctx, w, h);
+  }
+  function renderAttempts() {
+    if (pad) {
+      pad.destroy();
+      pad = null;
+    }
+    const attempt = state.compareId ? state.attempts.find((a) => a.id === state.compareId) : null;
+    if (state.compareId && !attempt) state.compareId = null;
+    if (attempt) {
+      const card = cardById(attempt.cardId);
+      const source = findSource(attempt.sourceId);
+      const options = allSources().filter((s) => !attempt.technique || s.technique === attempt.technique);
+      app.innerHTML = `
+        <div class="library">
+          <div class="record-head">
+            <div>
+              <button class="btn btn-ghost" type="button" id="back">Contents</button>
+              <h1>${esc(card ? card.title : "Attempt")}</h1>
+              <p class="lede">${esc(techniqueMeta(attempt.technique).title || attempt.technique)} · ${esc(String(attempt.durationMin || ""))} min · ${esc(shortWhen(attempt.createdAt))}</p>
+            </div>
+            <button class="btn btn-ghost" type="button" id="compare-back">All attempts</button>
+          </div>
+          <div class="compare-grid">
+            <figure>
+              ${attempt.imageDataUrl ? `<img id="compare-photo" alt="Your page" />` : `<p class="empty-pages">No photo for this session.</p>`}
+              <figcaption>Your page</figcaption>
+            </figure>
+            <figure>
+              ${attempt.referenceDataUrl ? `<img id="compare-ref" alt="Reference" />` : `<canvas id="compare-guide"></canvas>`}
+              <figcaption>Reference</figcaption>
+            </figure>
+          </div>
+          <label class="source-pick">Source
+            <select id="attempt-source">
+              <option value="">None</option>
+              ${options.map((s) => `<option value="${esc(s.id)}" ${s.id === attempt.sourceId ? "selected" : ""}>${esc(s.title)}</option>`).join("")}
+            </select>
+          </label>
+          ${source && (source.lessonIds || []).length ? `<div class="source-actions">${source.lessonIds.filter((id) => LESSONS.some((l) => l.id === id)).map((id) => `<button class="btn btn-ghost" type="button" data-read="${esc(id)}">${esc((LESSONS.find((l) => l.id === id) || {}).title || id)}</button>`).join("")}</div>` : ""}
+          <button class="btn btn-ghost danger" type="button" id="delete-attempt">Delete</button>
+          <div class="toast" id="toast"></div>
+        </div>`;
+      const photo = document.getElementById("compare-photo");
+      if (photo) photo.src = attempt.imageDataUrl;
+      const ref = document.getElementById("compare-ref");
+      if (ref) ref.src = attempt.referenceDataUrl;
+      else requestAnimationFrame(paintCompareGuide);
+      document.getElementById("back").onclick = () => showLibrary();
+      document.getElementById("compare-back").onclick = () => {
+        state.compareId = null;
+        render();
+      };
+      document.getElementById("attempt-source").onchange = (e) => {
+        setAttemptSource(attempt.id, e.target.value);
+        render();
+      };
+      document.getElementById("delete-attempt").onclick = (e) => {
+        const btn = e.currentTarget;
+        if (btn.dataset.armed !== "1") {
+          btn.dataset.armed = "1";
+          btn.textContent = "Delete this attempt?";
+          return;
+        }
+        deleteAttempt(attempt.id);
+      };
+      app.querySelectorAll("[data-read]").forEach((el) => {
+        el.onclick = () => openRead(el.dataset.read);
+      });
+      return;
+    }
+    const rows = filteredAttempts();
+    app.innerHTML = `
+      <div class="library">
+        <div class="record-head">
+          <div>
+            <button class="btn btn-ghost" type="button" id="back">Contents</button>
+            <h1>Attempts</h1>
+            <p class="lede">Photos from the practice station, newest first. Nothing here is scored.</p>
+          </div>
+        </div>
+        <div class="filters">
+          <button class="chip ${state.attemptFilter === "all" ? "on" : ""}" type="button" data-filter="all">All</button>
+          ${TECHNIQUES.map((t) => `<button class="chip ${state.attemptFilter === t.id ? "on" : ""}" type="button" data-filter="${t.id}">${esc(t.title)}</button>`).join("")}
+        </div>
+        ${rows.length ? `<div class="attempt-grid">${rows.map((a) => {
+          const card = cardById(a.cardId);
+          return `<button class="attempt-tile" type="button" data-attempt="${esc(a.id)}">
+            ${a.imageDataUrl ? `<img alt="" data-thumb="${esc(a.id)}" />` : `<span class="attempt-blank">No photo</span>`}
+            <span class="attempt-copy"><b>${esc(card ? card.title : "Attempt")}</b><i>${esc(shortWhen(a.createdAt))}</i></span>
+          </button>`;
+        }).join("")}</div>` : `<p class="empty-pages">Nothing captured yet. The station keeps a photo when you press Capture.</p>`}
+        <div class="toast" id="toast"></div>
+      </div>`;
+    document.getElementById("back").onclick = () => showLibrary();
+    app.querySelectorAll("[data-filter]").forEach((el) => {
+      el.onclick = () => {
+        state.attemptFilter = el.dataset.filter;
+        render();
+      };
+    });
+    app.querySelectorAll("[data-thumb]").forEach((img) => {
+      const row = state.attempts.find((a) => a.id === img.dataset.thumb);
+      if (row) img.src = row.imageDataUrl;
+    });
+    app.querySelectorAll("[data-attempt]").forEach((el) => {
+      el.onclick = () => {
+        state.compareId = el.dataset.attempt;
+        render();
+      };
+    });
   }
 
   function renderRead() {
@@ -1512,6 +2017,15 @@
         exitStation();
         return;
       }
+      if (state.view === "attempts" && state.compareId) {
+        state.compareId = null;
+        render();
+        return;
+      }
+      if (state.view === "sources" || state.view === "attempts") {
+        showLibrary();
+        return;
+      }
     }
     const tag = e.target && e.target.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -2023,6 +2537,7 @@
       load();
     }
     render();
+    loadBook();
   }
 
   window.startSketchDesk = function (host) {
