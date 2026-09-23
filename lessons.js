@@ -1,7 +1,8 @@
 const PATHS = [
   { id: "foundations", title: "Foundations", blurb: "Train the hand before the subject." },
   { id: "trees", title: "Trees", blurb: "Hariz’s architectural tree method, broken into drills." },
-  { id: "architecture", title: "Street & facade", blurb: "Shop houses, windows, and people for scale." },
+  { id: "architecture", title: "Street & facade", blurb: "Shop houses, Amsterdam canal rows, windows, and people for scale." },
+  { id: "design", title: "Design logic", blurb: "Construction tactics: extend lines, reduce to circles, make one stroke do two jobs." },
 ];
 
 const LESSONS = [
@@ -13,10 +14,25 @@ const LESSONS = [
     minutes: 6,
     blurb: "Draw from the shoulder. One confident stroke beats ten scratchy ones.",
     steps: [
-      { title: "Ghost the stroke", coach: "Hover the pen over the faint guides and rehearse the motion in the air twice. Then put the line down in one pass.", hint: "Look at the end point, not the nib.", guide: "warmup-lines" },
-      { title: "Curves without steering", coach: "Same idea, now with arcs. Keep the wrist quiet. The curve should feel like a comma, not a staircase.", hint: "If it wobbles, slow down — don’t add extra strokes.", guide: "warmup-curves" },
-      { title: "Ellipses in a tube", coach: "Ellipses are just circles seen in perspective. Draw through the box as if the ellipse continues behind the paper.", hint: "The far side of the ellipse is thinner.", guide: "warmup-ellipses" }
-    ]
+      {
+        title: "Ghost the stroke",
+        coach: "Hover the pen over the faint guides and rehearse the motion in the air twice. Then put the line down in one pass.",
+        hint: "Look at the end point, not the nib.",
+        guide: "warmup-lines",
+      },
+      {
+        title: "Curves without steering",
+        coach: "Same idea, now with arcs. Keep the wrist quiet. The curve should feel like a comma, not a staircase.",
+        hint: "If it wobbles, slow down — don’t add extra strokes.",
+        guide: "warmup-curves",
+      },
+      {
+        title: "Ellipses in a tube",
+        coach: "Ellipses are just circles seen in perspective. Draw through the box as if the ellipse continues behind the paper.",
+        hint: "The far side of the ellipse is thinner.",
+        guide: "warmup-ellipses",
+      },
+    ],
   },
   {
     id: "hatching",
@@ -26,9 +42,19 @@ const LESSONS = [
     minutes: 8,
     blurb: "Trees and facades only work if your darks are dark. Practice bands of tone.",
     steps: [
-      { title: "Four value bands", coach: "Fill each band with parallel hatching. Leave paper white in band 1. Pack the lines tighter as you move right.", hint: "Change spacing, not pressure, to get darker.", guide: "value-bands" },
-      { title: "Form on a cylinder", coach: "Hatch around the form, not straight down the page. Darkest on the side opposite the sun, with a sliver of reflected light on the edge.", hint: "Sun is coming from the upper left.", guide: "value-cylinder" }
-    ]
+      {
+        title: "Four value bands",
+        coach: "Fill each band with parallel hatching. Leave paper white in band 1. Pack the lines tighter as you move right.",
+        hint: "Change spacing, not pressure, to get darker.",
+        guide: "value-bands",
+      },
+      {
+        title: "Form on a cylinder",
+        coach: "Hatch around the form, not straight down the page. Darkest on the side opposite the sun, with a sliver of reflected light on the edge.",
+        hint: "Sun is coming from the upper left.",
+        guide: "value-cylinder",
+      },
+    ],
   },
   {
     id: "tree-skeleton",
@@ -38,10 +64,25 @@ const LESSONS = [
     minutes: 8,
     blurb: "Level 1 of the Instagram guide: trunk and branches only. No leaves yet.",
     steps: [
-      { title: "Plant the trunk", coach: "Two slightly bowed lines that flare at the ground and taper as they rise. Trees are not telephone poles.", hint: "Leave a gap of air at the base so it can sit on soil later.", guide: "tree-trunk" },
-      { title: "Primary branches", coach: "Branches fork and get thinner. They should never be thicker than the limb they grow from. Keep the gesture open — like a dancer’s arms.", hint: "Avoid perfect symmetry. Nature is lopsided on purpose.", guide: "tree-branches" },
-      { title: "Twigs at the tips", coach: "Short, quicker marks at the ends. This is the last of the structure. Resist the urge to scribble foliage yet.", hint: "Stop while you can still count the main limbs.", guide: "tree-twigs" }
-    ]
+      {
+        title: "Plant the trunk",
+        coach: "Two slightly bowed lines that flare at the ground and taper as they rise. Trees are not telephone poles.",
+        hint: "Leave a gap of air at the base so it can sit on soil later.",
+        guide: "tree-trunk",
+      },
+      {
+        title: "Primary branches",
+        coach: "Branches fork and get thinner. They should never be thicker than the limb they grow from. Keep the gesture open — like a dancer’s arms.",
+        hint: "Avoid perfect symmetry. Nature is lopsided on purpose.",
+        guide: "tree-branches",
+      },
+      {
+        title: "Twigs at the tips",
+        coach: "Short, quicker marks at the ends. This is the last of the structure. Resist the urge to scribble foliage yet.",
+        hint: "Stop while you can still count the main limbs.",
+        guide: "tree-twigs",
+      },
+    ],
   },
   {
     id: "tree-canopy",
@@ -51,9 +92,19 @@ const LESSONS = [
     minutes: 10,
     blurb: "Do not draw leaves. Draw clouds of leaves sitting on the skeleton.",
     steps: [
-      { title: "Place the masses", coach: "Think broccoli, not parsley. Big overlapping ovals first. Leave sky-holes so the canopy can breathe.", hint: "Some branches should still poke through.", guide: "tree-masses" },
-      { title: "Scribble the edge", coach: "A loose, wandering edge sells foliage. Keep the interior quieter than the silhouette.", hint: "Vary the pressure at the outline — broken edges feel alive.", guide: "tree-scribble" }
-    ]
+      {
+        title: "Place the masses",
+        coach: "Think broccoli, not parsley. Big overlapping ovals first. Leave sky-holes so the canopy can breathe.",
+        hint: "Some branches should still poke through.",
+        guide: "tree-masses",
+      },
+      {
+        title: "Scribble the edge",
+        coach: "A loose, wandering edge sells foliage. Keep the interior quieter than the silhouette.",
+        hint: "Vary the pressure at the outline — broken edges feel alive.",
+        guide: "tree-scribble",
+      },
+    ],
   },
   {
     id: "tree-value",
@@ -63,10 +114,25 @@ const LESSONS = [
     minutes: 12,
     blurb: "This is how Level 1 becomes Level ∞ — light direction, dark core, people for scale.",
     steps: [
-      { title: "Decide the sun", coach: "Sun is upper-left. The right-hand and underside of each clump go darker. Leave a light cap on top of the canopy.", hint: "One light source. Don’t invent a second sun.", guide: "tree-sun" },
-      { title: "Pack the core", coach: "The darkest dark sits inside the crown, where clumps overlap and the trunk disappears. Hatch in the direction of growth.", hint: "If the tree still looks flat, the core is not dark enough.", guide: "tree-core" },
-      { title: "Ground and scale", coach: "A simple ground line, a cast shadow to the right, and two standing figures. People tell the viewer this is a real tree, not a broccoli floret.", hint: "Figures are about 1/6 the tree height. No faces needed.", guide: "tree-finish" }
-    ]
+      {
+        title: "Decide the sun",
+        coach: "Sun is upper-left. The right-hand and underside of each clump go darker. Leave a light cap on top of the canopy.",
+        hint: "One light source. Don’t invent a second sun.",
+        guide: "tree-sun",
+      },
+      {
+        title: "Pack the core",
+        coach: "The darkest dark sits inside the crown, where clumps overlap and the trunk disappears. Hatch in the direction of growth.",
+        hint: "If the tree still looks flat, the core is not dark enough.",
+        guide: "tree-core",
+      },
+      {
+        title: "Ground and scale",
+        coach: "A simple ground line, a cast shadow to the right, and two standing figures. People tell the viewer this is a real tree, not a broccoli floret.",
+        hint: "Figures are about 1/6 the tree height. No faces needed.",
+        guide: "tree-finish",
+      },
+    ],
   },
   {
     id: "tree-full",
@@ -76,8 +142,13 @@ const LESSONS = [
     minutes: 18,
     blurb: "Run the whole method without stopping. Ghost guide stays faint so you lead.",
     steps: [
-      { title: "Build it once", coach: "Skeleton → clumps → value → ground and people. Work in that order even if the guide shows the finished tree. Do not jump to leaves first.", hint: "Ten extra minutes of structure beats ten extra minutes of scribble.", guide: "tree-finish" }
-    ]
+      {
+        title: "Build it once",
+        coach: "Skeleton → clumps → value → ground and people. Work in that order even if the guide shows the finished tree. Do not jump to leaves first.",
+        hint: "Ten extra minutes of structure beats ten extra minutes of scribble.",
+        guide: "tree-finish",
+      },
+    ],
   },
   {
     id: "wander",
@@ -87,8 +158,42 @@ const LESSONS = [
     minutes: 8,
     blurb: "The other reel: no plan. Wander, then recognize.",
     steps: [
-      { title: "Wander first", coach: "Fill the page with loose, looping lines. Don’t aim for a tree. After a minute, stop and ask: where is a trunk hiding? Darken that path.", hint: "Discovery, not construction. Keep 70% of the scribble.", guide: "wander" }
-    ]
+      {
+        title: "Wander first",
+        coach: "Fill the page with loose, looping lines. Don’t aim for a tree. After a minute, stop and ask: where is a trunk hiding? Darken that path.",
+        hint: "Discovery, not construction. Keep 70% of the scribble.",
+        guide: "wander",
+      },
+    ],
+  },
+  {
+    id: "tree-page",
+    path: "trees",
+    title: "Fill a page with trees",
+    level: "Study",
+    minutes: 16,
+    blurb: "Mallery Jane’s sketchbook drill: many trees, three values, under 20 minutes. Quantity over preciousness.",
+    source: "malleryjaneart reel Db5uA1ousaL",
+    steps: [
+      {
+        title: "One value, many shapes",
+        coach: "Lay in 6–8 tree silhouettes with the same light wash of hatching. Same nib. Don’t fuss the outline — triangles that fatten at the base, a few lopsided clouds. This is a study, not a portrait.",
+        hint: "If you spend more than a minute on one tree, you are overworking it. Move on.",
+        guide: "tree-page-shapes",
+      },
+      {
+        title: "Mid-value under the branches",
+        coach: "Light is coming from the left. Pack a mid tone on the right side of each crown and in the pockets under the clumps. Keep the left-top edge of every tree paper-white.",
+        hint: "Shadows live under branches and on the side opposite the sun — never as an outline around the whole tree.",
+        guide: "tree-page-mid",
+      },
+      {
+        title: "One last dark",
+        coach: "A short pass of darks: the deepest overlap inside each crown, a darker right edge on the trunk, a sliver of ground shadow. Then stop. The whole page should feel done in under 20 minutes.",
+        hint: "One extra dark is enough. A third layer of fuss kills the study.",
+        guide: "tree-page-darks",
+      },
+    ],
   },
   {
     id: "shop-block",
@@ -98,9 +203,19 @@ const LESSONS = [
     minutes: 10,
     blurb: "Japanese machiya / shophouse: get the big rectangles true before any tiles.",
     steps: [
-      { title: "Ground, eaves, party walls", coach: "One horizon-ish ground line. Two vertical party walls. A slightly projecting eave. The facade is a stack of rectangles, not a picture of a house.", hint: "Measure with your pen: width vs height of the front.", guide: "shop-block" },
-      { title: "Floors and openings", coach: "Split the facade into storey bands. Ground floor is taller. Windows align on a grid — even when the woodwork is irregular.", hint: "Leave the door darker and slightly off-center.", guide: "shop-openings" }
-    ]
+      {
+        title: "Ground, eaves, party walls",
+        coach: "One horizon-ish ground line. Two vertical party walls. A slightly projecting eave. The facade is a stack of rectangles, not a picture of a house.",
+        hint: "Measure with your pen: width vs height of the front.",
+        guide: "shop-block",
+      },
+      {
+        title: "Floors and openings",
+        coach: "Split the facade into storey bands. Ground floor is taller. Windows align on a grid — even when the woodwork is irregular.",
+        hint: "Leave the door darker and slightly off-center.",
+        guide: "shop-openings",
+      },
+    ],
   },
   {
     id: "shop-detail",
@@ -110,9 +225,48 @@ const LESSONS = [
     minutes: 14,
     blurb: "The timelapse layer: rhythm of tiles, noren, window bars, a figure on the street.",
     steps: [
-      { title: "Rhythm, not inventory", coach: "Suggest tiles with repeating short strokes. Suggest bars with a few verticals, not all of them. The eye finishes the pattern.", hint: "Cluster detail near the entrance; let the upper wall stay quieter.", guide: "shop-detail" },
-      { title: "Street life", coach: "A bicycle or a person, a shadow under the eave, and a darker interior through the door. That’s what makes the shop feel open.", hint: "Cast shadows are more important than the sign lettering.", guide: "shop-life" }
-    ]
+      {
+        title: "Rhythm, not inventory",
+        coach: "Suggest tiles with repeating short strokes. Suggest bars with a few verticals, not all of them. The eye finishes the pattern.",
+        hint: "Cluster detail near the entrance; let the upper wall stay quieter.",
+        guide: "shop-detail",
+      },
+      {
+        title: "Street life",
+        coach: "A bicycle or a person, a shadow under the eave, and a darker interior through the door. That’s what makes the shop feel open.",
+        hint: "Cast shadows are more important than the sign lettering.",
+        guide: "shop-life",
+      },
+    ],
+  },
+  {
+    id: "amsterdam-row",
+    path: "architecture",
+    title: "Amsterdam canal row",
+    level: "Street · bigger",
+    minutes: 20,
+    blurb: "Sofia’s “going a little bigger” drill: a row of canal houses in ink. Fill the sheet. Watercolor can wait.",
+    source: "freeartist_sofi reel DcocU4mIRIj",
+    steps: [
+      {
+        title: "Five gables, one quay",
+        coach: "Work larger than the shop-house drill. A quay line across the lower third, then five skinny facades that almost touch. Give each house a different height and a different gable — step, bell, neck. Let one or two lean a few degrees. Amsterdam is not a ruler.",
+        hint: "The row should eat most of the page. If there is a fat empty margin, you went too small.",
+        guide: "amsterdam-block",
+      },
+      {
+        title: "Window rhythm, not inventory",
+        coach: "Each facade is a stack of tall rectangles. Two or three windows across, three or four floors. Draw the outer frames; skip most of the panes. A few vertical mullions are enough. Ground-floor doors sit a step above the quay.",
+        hint: "If you start drawing every pane you will still be there at dinner. Rhythm first.",
+        guide: "amsterdam-windows",
+      },
+      {
+        title: "Ink weight, then stop",
+        coach: "Pack dark into a few doorways and one interior. Scribble a broken reflection in the canal. A bicycle and a walking figure on the quay. Leave paper-white on the gables — that is where a later watercolor wash will sit.",
+        hint: "Lots of ink does not mean ink everywhere. Cluster the darks. Then put the pen down.",
+        guide: "amsterdam-ink",
+      },
+    ],
   },
   {
     id: "figures",
@@ -122,7 +276,12 @@ const LESSONS = [
     minutes: 6,
     blurb: "Architectural figures are letters, not portraits: head-dot, coat, two legs.",
     steps: [
-      { title: "The 6-mark figure", coach: "Oval head, sloped shoulders, a rectangle for the torso, two simple legs, optional bag. No hands, no face. Repeat across the row at different sizes.", hint: "Heads sit higher than you think. Legs are half the height.", guide: "figures" }
-    ]
-  }
+      {
+        title: "The 6-mark figure",
+        coach: "Oval head, sloped shoulders, a rectangle for the torso, two simple legs, optional bag. No hands, no face. Repeat across the row at different sizes.",
+        hint: "Heads sit higher than you think. Legs are half the height.",
+        guide: "figures",
+      },
+    ],
+  },
 ];
