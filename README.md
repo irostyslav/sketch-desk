@@ -6,7 +6,9 @@ A beginner’s drawing workbook you can keep open as a reference. Each chapter h
 
 ## How to use it
 
-1. **Read** the chapter when you want the words.
+**Book** is the next lesson. **Draw** opens it. **Due** is a repeat with the example off: one day, then three, then seven. **Desk** holds the station, sources, attempts, roadmap, profile, and the pages you kept.
+
+1. **Read** the chapter when you want the words. It is inside the lesson, under Example.
 2. **Watch** the pen build the drawing. Each mark has what the hand does, and why.
 3. **Practice** the exercise. Show the example, hide it, then compare.
 4. **Practice station** puts one reference on the table. Capture shows a frame for the page, then the photo beside the reference. Nothing is scored.

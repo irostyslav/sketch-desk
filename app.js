@@ -36,8 +36,12 @@
     attemptFilter: "all",
     compareId: null,
     days: {},
+    reviews: {},
     profileMonth: "",
-    profileDay: ""
+    profileDay: "",
+    hintOpen: false,
+    exampleOpen: false,
+    timerOpen: false
   };
 
   const TECHNIQUES = [
@@ -59,7 +63,17 @@
   let started = false;
   let timerHandle = 0;
   let galleryUrls = [];
+  let hintTimer = 0;
   let toastTimer = 0;
+  let bookPath = null;
+  const VARIANTS = {
+    lines: "hatching",
+    hatching: "vessels",
+    "tree-skeleton": "palm",
+    "shop-block": "one-point",
+    "trigger-line": "circles-lines",
+    "circles-lines": "double-function"
+  };
   let watchToken = 0;
   let watchTimer = 0;
   let watchRaf = 0;
@@ -144,6 +158,19 @@
       if (state.lastDay && /^\d{4}-\d{2}-\d{2}$/.test(state.lastDay) && !state.days[state.lastDay]) {
         state.days[state.lastDay] = { minutes: 0, image: false };
       }
+      state.reviews = {};
+      if (raw.reviews && typeof raw.reviews === "object") {
+        Object.keys(raw.reviews).forEach((id) => {
+          const review = raw.reviews[id];
+          if (!review || !/^\d{4}-\d{2}-\d{2}$/.test(review.due)) return;
+          const interval = Number(review.interval);
+          state.reviews[id] = {
+            due: review.due,
+            interval: interval === 3 || interval === 7 ? interval : 1,
+            reps: Math.max(0, Number(review.reps) || 0)
+          };
+        });
+      }
     } catch (_) {}
     applyAppearance();
     tickStreak();
@@ -165,7 +192,8 @@
         focusId: state.station.focusId || "",
         touch: state.station.touch || {}
       },
-      days: state.days
+      days: state.days,
+      reviews: state.reviews
     });
     try {
       localStorage.setItem(STORE, JSON.stringify(payload()));
@@ -214,8 +242,76 @@
     for (let i = 0; i < key.length; i++) n = Math.imul(n ^ key.charCodeAt(i), 16777619);
     return LESSONS[Math.abs(n) % LESSONS.length];
   }
-  function dailyIsDone() {
-    return state.dailyDone === `${todayKey()}:${dailyLesson().id}`;
+  function addDays(key, n) {
+    const parts = String(key).split("-").map(Number);
+    const date = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+    date.setDate(date.getDate() + n);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+  function variantLesson(id) {
+    const next = VARIANTS[id];
+    return next ? LESSONS.find((lesson) => lesson.id === next) : null;
+  }
+  function dueReview() {
+    const today = todayKey();
+    let best = null;
+    Object.keys(state.reviews).forEach((id) => {
+      const review = state.reviews[id];
+      if (!review || review.due > today) return;
+      if (!LESSONS.some((lesson) => lesson.id === id)) return;
+      if (!best || review.due < best.due) best = { id, due: review.due, interval: review.interval, reps: review.reps };
+    });
+    return best;
+  }
+  function scheduleReview(id) {
+    const prev = state.reviews[id];
+    if (!prev) {
+      state.reviews[id] = { due: addDays(todayKey(), 1), interval: 1, reps: 0 };
+      return;
+    }
+    if (state.ghost) return;
+    const interval = prev.interval < 3 ? 3 : 7;
+    state.reviews[id] = {
+      due: addDays(todayKey(), interval),
+      interval,
+      reps: (prev.reps || 0) + 1
+    };
+  }
+  function dock(active) {
+    return `<nav class="dock" aria-label="Desk">
+      <button type="button" data-dock="book" class="${active === "book" ? "on" : ""}">Book</button>
+      <button type="button" data-dock="draw">Draw</button>
+      <button type="button" data-dock="due" class="${active === "due" ? "on" : ""}">Due</button>
+      <button type="button" data-dock="desk" class="${active === "desk" ? "on" : ""}">Desk</button>
+    </nav>`;
+  }
+  function bindDock() {
+    app.querySelectorAll("[data-dock]").forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.dataset.dock;
+        if (id === "book") showLibrary();
+        else if (id === "draw") drawNow();
+        else if (id === "due") openDue();
+        else openDesk();
+      };
+    });
+  }
+  function drawNow() {
+    const id = state.lastLesson || (LESSONS[0] && LESSONS[0].id);
+    if (id) openLesson(id, { test: false });
+    else openStation();
+  }
+  function openDue() {
+    const due = dueReview();
+    if (due) openLesson(due.id, { test: true });
+    else {
+      showLibrary();
+      toast("Nothing is due.");
+    }
+  }
+  function openDesk() {
+    state.view = "desk";
+    render();
   }
   function clamp(n, a, b) {
     return Math.max(a, Math.min(b, n));
@@ -241,6 +337,7 @@
     else if (state.view === "attempts") renderAttempts();
     else if (state.view === "roadmap") renderRoadmap();
     else if (state.view === "profile") renderProfile();
+    else if (state.view === "desk") renderDesk();
     else renderStudio();
   }
 
@@ -249,53 +346,71 @@
       pad.destroy();
       pad = null;
     }
+    const due = dueReview();
     const next = LESSONS.find((l) => l.id === state.lastLesson) || LESSONS.find((l) => !state.completed[l.id]) || LESSONS[0];
-    const daily = dailyLesson();
-    const dailyDone = dailyIsDone();
+    const focus = due ? LESSONS.find((l) => l.id === due.id) : next;
+    if (bookPath === null) bookPath = focus ? focus.path : "";
+    const variant = due ? variantLesson(due.id) : null;
+    const now = due ? `
+      <div class="card continue">
+        <p class="eyebrow">Due</p>
+        <h2>${esc(focus.title)}</h2>
+        <p>The example stays off.</p>
+        <div class="actions"><button class="btn btn-ink" type="button" id="now-practice">Practice</button></div>
+        ${variant ? `<p class="variant">Same rule, different subject. <button type="button" class="text-link" id="now-variant">${esc(variant.title)}</button></p>` : ""}
+      </div>` : `
+      <div class="card continue">
+        <p class="eyebrow">${state.completed[next.id] ? "Practice again" : "Continue"}</p>
+        <h2>${esc(next.title)}</h2>
+        <p>${esc(next.blurb)}</p>
+        <div class="actions"><button class="btn btn-ink" type="button" id="now-practice">Practice</button></div>
+      </div>`;
     app.innerHTML = `
-      <div class="library">
-        <div class="topbar">
-          <div>
-            <h1 class="brand">Sketch <span>Desk</span></h1>
-            <p class="lede">A workbook for learning to draw. Read the idea, watch the pen, then draw it yourself.</p>
-          </div>
-          <div class="stats">
-            <div class="stat">Streak <b>${state.streak} day${state.streak === 1 ? "" : "s"}</b></div>
-            <div class="stat">Lessons <b>${doneCount()} / ${LESSONS.length}</b></div>
-          </div>
+      <div class="library with-dock">
+        <div class="topbar"><h1 class="brand">Sketch <span>Desk</span></h1></div>
+        ${now}
+        <div class="book">
+          ${PATHS.map((p) => {
+            const open = bookPath === p.id;
+            const items = LESSONS.filter((l) => l.path === p.id);
+            return `<button class="path-toggle" type="button" data-path="${esc(p.id)}" aria-expanded="${open ? "true" : "false"}"><h2>${esc(p.title)}</h2></button>
+              ${open ? `<p class="path-blurb">${esc(p.blurb)}</p><ol class="toc">${items.map((l) => `
+                <li class="toc-row">
+                  <div class="toc-copy"><h3>${esc(l.title)}</h3></div>
+                  <button class="btn btn-ink" type="button" data-open="${esc(l.id)}">Practice</button>
+                </li>`).join("")}</ol>` : ""}`;
+          }).join("")}
         </div>
-        <div class="hero">
-          <div class="card continue">
-            <p class="eyebrow">${state.completed[next.id] ? "Practice again" : "Continue"}</p>
-            <h2>${esc(next.title)}</h2>
-            <p>${esc(next.blurb)}</p>
-            <div class="actions">
-              <button class="btn btn-ink" type="button" id="open-station">Practice station</button>
-              <button class="btn btn-ghost" data-read="${esc(next.id)}">Read</button>
-              <button class="btn btn-ghost" data-watch="${esc(next.id)}">Watch</button>
-              <button class="btn btn-ghost" data-open="${esc(next.id)}">Practice</button>
-              <button class="btn btn-ghost" data-free="1">Blank page</button>
-            </div>
-          </div>
-          <div class="card free-card">
-            <div>
-              <p class="eyebrow">${dailyDone ? "Today · practiced" : "Today’s exercise"}</p>
-              <h3>${esc(daily.title)}</h3>
-              <p>${esc(daily.blurb)}</p>
-            </div>
-            <div class="actions">
-              <button class="btn btn-ink" data-watch="${esc(daily.id)}">Watch</button>
-              <button class="btn btn-ghost" data-read="${esc(daily.id)}">Read</button>
-            </div>
-          </div>
-        </div>
-        ${pickupHtml()}
-        <div class="howto">
-          <div><p class="eyebrow">Read</p><p>The technique, when you want the words.</p></div>
-          <div><p class="eyebrow">Watch</p><p>The pen on the paper, and the thinking behind each mark.</p></div>
-          <div><p class="eyebrow">Practice</p><p>Your turn. Then try it with the example hidden.</p></div>
-        </div>
+        <p class="footnote">Tree and shop-house chapters follow Hariz Razif. A page of trees follows Mallery Jane. Design logic follows Tommy Hoppe. The examples are drawn here, not traced. A practice companion, not their product.</p>
+        <div class="toast" id="toast"></div>
+        ${dock("book")}
+      </div>`;
+    const practice = document.getElementById("now-practice");
+    if (practice) practice.onclick = () => openLesson(focus.id, { test: !!due });
+    const variantBtn = document.getElementById("now-variant");
+    if (variantBtn && variant) variantBtn.onclick = () => openLesson(variant.id, { test: false });
+    app.querySelectorAll("[data-path]").forEach((el) => {
+      el.onclick = () => {
+        bookPath = bookPath === el.dataset.path ? "" : el.dataset.path;
+        render();
+      };
+    });
+    app.querySelectorAll("[data-open]").forEach((el) => {
+      el.onclick = () => openLesson(el.dataset.open, { test: false });
+    });
+    bindDock();
+  }
+  function renderDesk() {
+    if (pad) {
+      pad.destroy();
+      pad = null;
+    }
+    app.innerHTML = `
+      <div class="library with-dock">
+        <div class="topbar"><h1 class="brand">Desk</h1></div>
         <div class="desk-links">
+          <button class="btn btn-ink" type="button" id="open-station">Practice station</button>
+          <button class="btn btn-ghost" type="button" data-free="1">Blank page</button>
           <button class="btn btn-ghost" type="button" id="open-sources">Sources</button>
           <button class="btn btn-ghost" type="button" id="open-attempts">Attempts${state.attempts.length ? ` · ${state.attempts.length}` : ""}</button>
           <button class="btn btn-ghost" type="button" id="open-roadmap">Roadmap</button>
@@ -303,49 +418,16 @@
         </div>
         <div class="gallery-head"><h2>Your pages</h2><p>Exercises you kept on this device</p></div>
         <div id="gallery-mount"><p class="empty-pages">Loading pages…</p></div>
-        ${PATHS.map((p) => {
-          const items = LESSONS.filter((l) => l.path === p.id);
-          return `<div class="path-head"><h2>${esc(p.title)}</h2><p>${esc(p.blurb)}</p></div>
-            <ol class="toc">${items.map((l) => `
-              <li class="toc-row">
-                <span class="chap">${esc(l.chapter || "")}</span>
-                <div class="toc-copy">
-                  <h3>${esc(l.title)}</h3>
-                  <p>${esc(l.technique || l.blurb)}</p>
-                </div>
-                <div class="toc-actions">
-                  <button class="btn btn-ghost" type="button" data-read="${esc(l.id)}">Read</button>
-                  <button class="btn btn-ink" type="button" data-watch="${esc(l.id)}">Watch</button>
-                  <button class="btn btn-ghost" type="button" data-open="${esc(l.id)}">Practice</button>
-                </div>
-              </li>`).join("")}</ol>`;
-        }).join("")}
-        <p class="footnote">Use it as a reference. Read a chapter again whenever the hand gets ahead of the idea. Tree and shop-house chapters follow the public method from Hariz Razif’s architectural sketch posts: structure, then masses, then value, then people. Fill a page follows the page-of-studies method associated with Mallery Jane. Design logic follows construction tactics associated with Tommy Hoppe: a trigger line, circles and straights, a line that does two jobs. The examples are drawn by this workbook, not traced from their pictures. This is a practice companion, not their product.</p>
+        <div class="toast" id="toast"></div>
+        ${dock("desk")}
       </div>`;
-    app.querySelectorAll("[data-open]").forEach((el) => {
-      el.onclick = () => openLesson(el.dataset.open, { test: false });
-    });
-    app.querySelectorAll("[data-read]").forEach((el) => {
-      el.onclick = () => openRead(el.dataset.read);
-    });
-    app.querySelectorAll("[data-watch]").forEach((el) => {
-      el.onclick = () => openWatch(el.dataset.watch);
-    });
-    app.querySelectorAll("[data-test]").forEach((el) => {
-      el.onclick = () => openLesson(el.dataset.test, { test: true });
-    });
-    const free = app.querySelector("[data-free]");
-    if (free) free.onclick = () => openFree();
-    const stationBtn = document.getElementById("open-station");
-    if (stationBtn) stationBtn.onclick = () => openStation();
-    const sourcesBtn = document.getElementById("open-sources");
-    if (sourcesBtn) sourcesBtn.onclick = () => openSources();
-    const attemptsBtn = document.getElementById("open-attempts");
-    if (attemptsBtn) attemptsBtn.onclick = () => openAttempts();
-    const roadmapBtn = document.getElementById("open-roadmap");
-    if (roadmapBtn) roadmapBtn.onclick = () => openRoadmap();
-    const profileBtn = document.getElementById("open-profile");
-    if (profileBtn) profileBtn.onclick = () => openProfile();
+    document.getElementById("open-station").onclick = () => openStation();
+    app.querySelector("[data-free]").onclick = () => openFree();
+    document.getElementById("open-sources").onclick = () => openSources();
+    document.getElementById("open-attempts").onclick = () => openAttempts();
+    document.getElementById("open-roadmap").onclick = () => openRoadmap();
+    document.getElementById("open-profile").onclick = () => openProfile();
+    bindDock();
     paintGallery();
   }
 
@@ -2170,10 +2252,12 @@
           <h1>${esc(title)}</h1>
           <div class="step-dots" id="dots">${dotsHtml(lesson)}</div>
           <div class="timer">
-            <span class="timer-readout" id="timer-readout">Timer</span>
-            <button type="button" class="chip" data-min="3">3</button>
-            <button type="button" class="chip" data-min="5">5</button>
-            <button type="button" class="chip" data-min="10">10</button>
+            <button type="button" class="timer-readout" id="timer-toggle">Timer</button>
+            <span id="timer-chips" ${state.timerOpen ? "" : "hidden"}>
+              <button type="button" class="chip" data-min="3">3</button>
+              <button type="button" class="chip" data-min="5">5</button>
+              <button type="button" class="chip" data-min="10">10</button>
+            </span>
           </div>
         </div>
         <div class="workspace">
@@ -2186,7 +2270,7 @@
               <button type="button" class="btn btn-ghost coach-toggle" id="coach-toggle">${state.coachOpen ? "Hide" : "Coach"}</button>
             </div>
             <div class="coach-extra">
-              <p class="coach-copy" id="coach-copy"></p>
+              <div class="coach-copy" id="coach-copy"></div>
               <div class="hint" id="hint" hidden></div>
               <p class="method" id="method" hidden></p>
             </div>
@@ -2200,7 +2284,8 @@
           ${toolBtn("pencil", "Pencil (B)", pencilIcon())}
           ${toolBtn("eraser", "Eraser (E)", eraserIcon())}
           <div class="sep"></div>
-          <label class="slider">Nib <input id="size" type="range" min="1" max="8" step="0.2" value="${state.size}" /></label>
+          <button class="tool" id="size-toggle" type="button" title="Nib size">Nib</button>
+          <label class="slider" id="size-wrap" hidden>Nib <input id="size" type="range" min="1" max="8" step="0.2" value="${state.size}" /></label>
           <div class="sep"></div>
           <button class="tool" id="undo" type="button" title="Undo (Z)">${undoIcon()}</button>
           <button class="tool" id="redo" type="button" title="Redo (Shift+Z)">${redoIcon()}</button>
@@ -2233,6 +2318,29 @@
   function toolBtn(id, title, icon) {
     return `<button class="tool ${state.tool === id ? "on" : ""}" data-tool="${id}" type="button" title="${title}">${icon}</button>`;
   }
+  function paintHint(lesson, step) {
+    const hint = document.getElementById("hint");
+    const method = document.getElementById("method");
+    if (hint) {
+      hint.hidden = !state.hintOpen;
+      hint.textContent = step && step.hint ? step.hint : "";
+    }
+    if (!method) return;
+    const source = lesson && lesson.source;
+    if (state.hintOpen && source && source.artist) {
+      const handle = source.handle ? " (@" + source.handle + ")" : "";
+      method.hidden = false;
+      method.textContent = "Method after " + source.artist + handle + ". A practice companion, not their product.";
+    } else method.hidden = true;
+  }
+  function armHint(lesson, step) {
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => {
+      if (state.view !== "studio" || state.hintOpen) return;
+      state.hintOpen = true;
+      paintHint(lesson, step);
+    }, 12000);
+  }
   function fillCoach(lesson, step) {
     const kicker = document.getElementById("kicker");
     const heading = document.getElementById("step-title");
@@ -2253,32 +2361,18 @@
     }
     kicker.textContent = `Chapter ${lesson.chapter} · Exercise ${state.step + 1} of ${lesson.steps.length}`;
     heading.textContent = step.title;
-    copy.innerHTML = `
-      <span class="label">Technique</span>
-      <span class="ref-line">${esc(lesson.technique || "")}</span>
-      <span class="label">Example</span>
-      <span class="ref-line">${esc(step.example || step.hint)}</span>
-      <span class="label">Exercise</span>
-      <span class="ref-line">${esc(step.exercise || step.coach)}</span>`;
-    hint.hidden = false;
-    hint.textContent = step.hint;
-    const method = document.getElementById("method");
-    if (method) {
-      const source = lesson.source;
-      if (source && source.artist) {
-        const handle = source.handle ? " (@" + source.handle + ")" : "";
-        method.hidden = false;
-        method.textContent = "Method after " + source.artist + handle + ". A practice companion, not their product.";
-      } else method.hidden = true;
-    }
+    copy.innerHTML = `<button type="button" class="exercise" id="exercise">${esc(step.exercise || step.coach)}</button>`;
+    paintHint(lesson, step);
     tools.innerHTML = `
-      <button class="btn btn-ghost" id="show" type="button">Show the example</button>
-      <button class="btn btn-ghost" id="read-chapter" type="button">Read chapter</button>
-      <button class="btn btn-ghost" id="watch-chapter" type="button">Watch the pen</button>
-      <button class="btn btn-ghost" id="test" type="button">Hide example</button>
-      <button class="btn btn-ghost" id="compare" type="button">Compare</button>
-      <label class="toggle"><input type="checkbox" id="ghost" ${state.ghost ? "checked" : ""} /> Example</label>
-      <label class="opacity">Faint <input id="ghost-op" type="range" min="0.15" max="1" step="0.05" value="${state.ghostOpacity}" /></label>`;
+      <button class="btn btn-ghost" id="example-toggle" type="button">Example</button>
+      <div class="example-more" id="example-more" ${state.exampleOpen ? "" : "hidden"}>
+        <button class="btn btn-ghost" id="show" type="button">Show me</button>
+        <button class="btn btn-ghost" id="test" type="button">Hide</button>
+        <button class="btn btn-ghost" id="compare" type="button">Compare</button>
+        <label class="opacity">Faint <input id="ghost-op" type="range" min="0.15" max="1" step="0.05" value="${state.ghostOpacity}" /></label>
+        <button class="btn btn-ghost" id="read-chapter" type="button">Read</button>
+        <button class="btn btn-ghost" id="watch-chapter" type="button">Watch</button>
+      </div>`;
     const last = state.step === lesson.steps.length - 1;
     nav.innerHTML = `
       <button class="btn btn-ghost" id="prev" type="button" ${state.step === 0 ? "disabled" : ""}>Back</button>
@@ -2286,6 +2380,7 @@
   }
 
   function bindStudio(lesson, title) {
+    const step = lesson ? lesson.steps[state.step] : null;
     document.getElementById("back").onclick = () => showLibrary();
     const back2 = document.getElementById("back2");
     if (back2) back2.onclick = () => showLibrary();
@@ -2303,6 +2398,24 @@
     app.querySelectorAll("[data-min]").forEach((btn) => {
       btn.onclick = () => setTimer(Number(btn.dataset.min));
     });
+    const timerToggle = document.getElementById("timer-toggle");
+    if (timerToggle) timerToggle.onclick = () => {
+      state.timerOpen = !state.timerOpen;
+      const chips = document.getElementById("timer-chips");
+      if (chips) chips.hidden = !state.timerOpen;
+    };
+    const exercise = document.getElementById("exercise");
+    if (exercise) exercise.onclick = () => {
+      state.hintOpen = !state.hintOpen;
+      paintHint(lesson, step);
+    };
+    if (lesson && step) armHint(lesson, step);
+    const exampleToggle = document.getElementById("example-toggle");
+    if (exampleToggle) exampleToggle.onclick = () => {
+      state.exampleOpen = !state.exampleOpen;
+      const more = document.getElementById("example-more");
+      if (more) more.hidden = !state.exampleOpen;
+    };
     const prev = document.getElementById("prev");
     const next = document.getElementById("next");
     if (prev) prev.onclick = () => changeStep(state.step - 1);
@@ -2340,6 +2453,11 @@
       save();
       if (pad) pad.redrawGuide();
     };
+    const sizeToggle = document.getElementById("size-toggle");
+    if (sizeToggle) sizeToggle.onclick = () => {
+      const wrap = document.getElementById("size-wrap");
+      if (wrap) wrap.hidden = !wrap.hidden;
+    };
     app.querySelectorAll("[data-tool]").forEach((btn) => {
       btn.onclick = () => selectTool(btn.dataset.tool);
     });
@@ -2362,6 +2480,8 @@
     if (!lesson) return;
     const next = clamp(i, 0, lesson.steps.length - 1);
     if (next === state.step) return;
+    state.hintOpen = false;
+    if (hintTimer) clearTimeout(hintTimer);
     if (pad) inkMemory = { strokes: pad.strokes, redo: pad.redoStack };
     state.step = next;
     renderStudio();
@@ -2391,17 +2511,25 @@
   }
 
   function completeLesson(lesson) {
+    const hadReview = !!state.reviews[lesson.id];
+    const ghostOff = !state.ghost;
     state.completed[lesson.id] = true;
     if (lesson.id === dailyLesson().id) state.dailyDone = `${todayKey()}:${lesson.id}`;
+    scheduleReview(lesson.id);
     markPracticed();
     save();
+    const note = !hadReview
+      ? "A repeat without the example will be here tomorrow."
+      : ghostOff
+        ? "The next repeat waits."
+        : "It’s in the workbook now.";
     const wrap = document.createElement("div");
     wrap.className = "complete-modal";
     wrap.innerHTML = `
       <div class="complete-card">
         <p class="eyebrow">Page finished</p>
         <h2>${esc(lesson.title)}</h2>
-        <p>It’s in the workbook now. Read the chapter again, or practice it once more with the example, and once without.</p>
+        <p>${esc(note)}</p>
         <div class="actions">
           <button class="btn btn-ink" id="to-lib" type="button">Contents</button>
           <button class="btn btn-ghost" id="again-ghost" type="button">Again with the example</button>
@@ -2454,7 +2582,7 @@
     tick();
   }
   function paintTimer() {
-    const el = document.getElementById("timer-readout");
+    const el = document.getElementById("timer-toggle");
     if (!el) return;
     document.querySelectorAll("[data-min]").forEach((btn) => {
       btn.classList.toggle("on", Boolean(state.timerEnd) && Number(btn.dataset.min) === state.timerMinutes);
@@ -2506,7 +2634,7 @@
         render();
         return;
       }
-      if (state.view === "sources" || state.view === "attempts" || state.view === "roadmap" || state.view === "profile") {
+      if (state.view === "sources" || state.view === "attempts" || state.view === "roadmap" || state.view === "profile" || state.view === "desk") {
         showLibrary();
         return;
       }
