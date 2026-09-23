@@ -320,7 +320,7 @@
                 </div>
               </li>`).join("")}</ol>`;
         }).join("")}
-        <p class="footnote">Use it as a reference. Read a chapter again whenever the hand gets ahead of the idea. Tree and shop-house chapters follow the public method from Hariz Razif’s architectural sketch posts: structure, then masses, then value, then people. Fill a page follows the page-of-studies method associated with Mallery Jane. The examples are drawn by this workbook, not traced from their pictures.</p>
+        <p class="footnote">Use it as a reference. Read a chapter again whenever the hand gets ahead of the idea. Tree and shop-house chapters follow the public method from Hariz Razif’s architectural sketch posts: structure, then masses, then value, then people. Fill a page follows the page-of-studies method associated with Mallery Jane. Design logic follows construction tactics associated with Tommy Hoppe: a trigger line, circles and straights, a line that does two jobs. The examples are drawn by this workbook, not traced from their pictures. This is a practice companion, not their product.</p>
       </div>`;
     app.querySelectorAll("[data-open]").forEach((el) => {
       el.onclick = () => openLesson(el.dataset.open, { test: false });
@@ -2188,6 +2188,7 @@
             <div class="coach-extra">
               <p class="coach-copy" id="coach-copy"></p>
               <div class="hint" id="hint" hidden></div>
+              <p class="method" id="method" hidden></p>
             </div>
             <div class="coach-tools" id="coach-tools"></div>
             <div class="coach-nav" id="coach-nav"></div>
@@ -2244,6 +2245,8 @@
       heading.textContent = "Draw anything";
       copy.textContent = "No example on this page. Use it when you already know the technique and want a clean sheet.";
       hint.hidden = true;
+      const method = document.getElementById("method");
+      if (method) method.hidden = true;
       tools.innerHTML = "";
       nav.innerHTML = `<button class="btn btn-ghost" id="back2" type="button">Back to contents</button>`;
       return;
@@ -2259,6 +2262,15 @@
       <span class="ref-line">${esc(step.exercise || step.coach)}</span>`;
     hint.hidden = false;
     hint.textContent = step.hint;
+    const method = document.getElementById("method");
+    if (method) {
+      const source = lesson.source;
+      if (source && source.artist) {
+        const handle = source.handle ? " (@" + source.handle + ")" : "";
+        method.hidden = false;
+        method.textContent = "Method after " + source.artist + handle + ". A practice companion, not their product.";
+      } else method.hidden = true;
+    }
     tools.innerHTML = `
       <button class="btn btn-ghost" id="show" type="button">Show the example</button>
       <button class="btn btn-ghost" id="read-chapter" type="button">Read chapter</button>

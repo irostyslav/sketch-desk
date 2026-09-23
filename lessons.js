@@ -2,6 +2,7 @@ const PATHS = [
   { id: "foundations", title: "Foundations", blurb: "Train the hand before the subject." },
   { id: "trees", title: "Trees", blurb: "Structure, masses, value — then a page of them." },
   { id: "architecture", title: "Street & facade", blurb: "Shop houses, windows, and streets that recede." },
+  { id: "design", title: "Design logic", blurb: "One construction rule at a time. Original ghosts, not a copied plate." },
 ];
 
 const LESSONS = [
@@ -190,6 +191,57 @@ const LESSONS = [
     steps: [
       { title: "The few-mark figure", coach: "Oval head, sloped shoulders, a rectangle for the torso, two simple legs. No hands, no face. Repeat the row at different sizes.", hint: "Heads sit higher than you think. Legs are about half the height.", guide: "figures" }
     ]
+  },
+  {
+    id: "trigger-line",
+    path: "design",
+    kind: "tactic",
+    freshPage: false,
+    minutes: 8,
+    skills: ["extend-line", "corner"],
+    source: { artist: "Tommy Hoppe", handle: "tommyhoppeart" },
+    title: "The trigger line",
+    level: "Design · 1",
+    blurb: "Find the longest straight in a simple still life and run it to a corner.",
+    steps: [
+      { title: "Find the long line", coach: "A cup is a circle and two sides. The spoon is the longest straight. Draw that line through the bowl. Do not extend it yet.", hint: "If two lines are close, pick the longer one. One trigger is enough.", guide: "trigger-find" },
+      { title: "Run it to the corner", coach: "Keep the same line and extend it until it meets a corner of the sheet. The cup stays where it is.", hint: "Move the line, not the cup, if it misses the corner.", guide: "trigger-extend" },
+      { title: "It has to pass through something", coach: "The extension should also cross the rim. A line that only hits the corner, and nothing on the way, is just a diagonal.", hint: "Corner and one feature. If it misses the rim, tilt the spoon, not the page.", guide: "trigger-hit" }
+    ]
+  },
+  {
+    id: "circles-lines",
+    path: "design",
+    kind: "tactic",
+    freshPage: false,
+    minutes: 8,
+    skills: ["ellipse", "straight"],
+    source: { artist: "Tommy Hoppe", handle: "tommyhoppeart" },
+    title: "Circles and lines",
+    level: "Design · 2",
+    blurb: "Reduce a pear and a cup to circles and straight edges. No copied plate.",
+    steps: [
+      { title: "Circles only", coach: "Two circles for the pear, one for the cup. No sides yet. Overlap the pear’s circles so they can become one fruit.", hint: "If you draw the outline first, you will skip the circles. Circles first.", guide: "circles-only" },
+      { title: "Close them with straights", coach: "Three straight lines finish the pear: two sides and a short stem. Two verticals finish the cup. Curves are not allowed in this step.", hint: "A wobbly side is a curve in disguise. Use the shoulder and make it straight.", guide: "circles-straights" },
+      { title: "Make two edges agree", coach: "The pear’s right side and the cup’s right side should be parallel. Shift the cup until they are. That is the whole correction.", hint: "Parallel means the same tilt, not the same length.", guide: "circles-parallel" }
+    ]
+  },
+  {
+    id: "double-function",
+    path: "design",
+    kind: "tactic",
+    freshPage: false,
+    minutes: 8,
+    skills: ["extend-line", "double-function"],
+    source: { artist: "Tommy Hoppe", handle: "tommyhoppeart" },
+    title: "A line with two jobs",
+    level: "Design · 3",
+    blurb: "One dog-leg is both the edge of a ribbon and the line that finds the corner.",
+    steps: [
+      { title: "The box", coach: "Draw a plain box, a little left of center. This is the object. It does not need a lid, a label, or a shadow.", hint: "Keep it a rectangle. Decoration will hide the line you are about to use.", guide: "double-box" },
+      { title: "The dog-leg", coach: "A ribbon leaves the top of the box, breaks once, and aims at the upper corner of the sheet. The break is the fold. The aim is the construction.", hint: "One break only. A second kink is a new idea.", guide: "double-leg" },
+      { title: "Contour and extension", coach: "Darken the part that is the ribbon. Leave the last stretch to the corner faint. Same line, two jobs: edge, then alignment.", hint: "If you ink the extension as heavily as the ribbon, the corner becomes part of the object.", guide: "double-weight" }
+    ]
   }
 ];
 
@@ -319,6 +371,33 @@ const REFERENCE = {
     steps: [
       { example: "A row of simple figures at different sizes, no faces.", exercise: "Repeat the few marks across the page. No hands, no faces. Change the size, not the recipe." }
     ]
+  },
+  "trigger-line": {
+    technique: "Extend the longest straight until it earns a corner",
+    read: "A still life has one line that is longer than the others. Here it is a spoon through a cup. Run that line to a corner of the sheet, and make sure it passes through the rim on the way. A diagonal that misses the object is only a diagonal. This is a construction on a cup and a spoon, not a copy of anyone’s plate.",
+    steps: [
+      { example: "A cup drawn as a circle and two sides, with the spoon crossing the bowl.", exercise: "Draw the cup, then the spoon. Stop at the cup. Do not run the line to the edge yet." },
+      { example: "The same spoon continued until it meets a corner of the page.", exercise: "Extend the line you already drew. Move the line if the corner is wrong. Leave the cup where it is." },
+      { example: "The extension crossing the rim, with a mark at the rim and at the corner.", exercise: "Check two hits: the rim, and the corner. Tilt the spoon if it misses the rim." }
+    ]
+  },
+  "circles-lines": {
+    technique: "A form is circles, then straights",
+    read: "Before a pear looks like a pear, it is two circles. A cup is one circle and two vertical lines. Draw only those. Then make the pear’s right side parallel to the cup’s right side. No outline you could recognize as someone else’s drawing.",
+    steps: [
+      { example: "Three circles: two overlapping for the pear, one for the cup.", exercise: "Circles only. Do not connect them." },
+      { example: "Straight sides and a stem closing the pear, and two verticals on the cup.", exercise: "Close the forms with straight lines. No extra curves." },
+      { example: "The pear’s right side and the cup’s right side at the same tilt.", exercise: "Shift the cup until those two edges agree. Do not redraw the pear." }
+    ]
+  },
+  "double-function": {
+    technique: "One line is both an edge and an alignment",
+    read: "A ribbon over a box can do two jobs at once. Where it crosses the box, it is the contour of the fold. Where it leaves, it is the line that finds the corner. Darken only the contour. Leave the extension faint. The subject is a box and a ribbon, invented for this exercise.",
+    steps: [
+      { example: "A plain rectangle, left of center.", exercise: "Draw the box. Do not decorate it." },
+      { example: "A ribbon that breaks once and continues toward the upper corner.", exercise: "One dog-leg. The break is the fold. The rest aims at the corner." },
+      { example: "The ribbon darker than the faint line that finishes at the corner.", exercise: "Ink the ribbon. Leave the last stretch light. Same line, two weights." }
+    ]
   }
 };
 
@@ -432,6 +511,30 @@ const WATCH = {
     story: "A person in a sketch of a building is a unit of measure that happens to be alive. The moment you give them a face, you have changed the subject. The building becomes a background to a portrait, and the portrait is one you do not have time to draw well.",
     steps: [
       { hand: "An oval, a slope of shoulders, a coat, two legs. The pen repeats it, and changes only the size.", why: "Heads sit higher than kindness would put them. The scale of the street depends on that. No face, because a face would ask to be looked at, and you brought the person here to measure the door." }
+    ]
+  },
+  "trigger-line": {
+    story: "Most lines describe an object. One line can describe the picture. It is the longest straight you can find, extended until the sheet has to acknowledge it. The test is not whether the spoon looks like a spoon. The test is whether that line hits a corner and, on the way, something that matters.",
+    steps: [
+      { hand: "The cup is a circle and two sides. The spoon is one straight through it. The pen stops at the cup.", why: "You are choosing the line before you use it. If you extend it immediately, you will not know which line you meant." },
+      { hand: "The same stroke continues, without a kink, until it meets a corner.", why: "A corner is a fact of the page. Hitting it means the object and the sheet are in the same drawing, not a sticker placed on a background." },
+      { hand: "A small mark where the line crosses the rim, and another at the corner.", why: "Two hits, or it does not count. A line that only finds the corner walked past the still life. A line that only finds the rim never met the page." }
+    ]
+  },
+  "circles-lines": {
+    story: "A complicated outline is usually a few circles that were never drawn. Put the circles down first and the likeness has somewhere to agree with. Straights close what the circles started. Then one pair of edges is asked to be parallel, so the two objects share a decision instead of sitting next to each other by accident.",
+    steps: [
+      { hand: "Three circles and nothing else. The pear is two of them, overlapping.", why: "The outline is a conclusion. If you start there, you are copying a silhouette you have not understood. The circles are the understanding." },
+      { hand: "Straight lines only, closing the pear and dropping the sides of the cup.", why: "A straight line is a choice you can check. A curve you add out of habit is a way of avoiding the choice." },
+      { hand: "The cup slides until its right side matches the tilt of the pear’s right side.", why: "Parallel is how two separate things start to belong to one picture. You are not decorating. You are agreeing." }
+    ]
+  },
+  "double-function": {
+    story: "A useful line refuses to do only one thing. On the box, this one is the edge of a ribbon. Past the box, it is an alignment to the corner. Ink tells them apart. The dark part is the object. The faint part is the thinking, and the thinking is allowed to stay visible.",
+    steps: [
+      { hand: "A rectangle. The pen does not add a label, a lid, or a shadow.", why: "The box is a stage. If you furnish it, you will forget the line you came here to test." },
+      { hand: "The ribbon leaves the top edge, breaks once, and heads for the upper corner.", why: "The break is the fold, which is something you could touch. The aim is the construction, which you could not. One mark is allowed to be both." },
+      { hand: "The ribbon is drawn again, darker. The last stretch to the corner stays light.", why: "Weight is how you tell a viewer which job is the object. If both jobs are equally dark, the corner becomes part of the ribbon, and the ribbon becomes a stripe to nowhere." }
     ]
   }
 };

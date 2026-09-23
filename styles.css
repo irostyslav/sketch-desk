@@ -411,6 +411,12 @@ img { max-width: 100%; }
   color: var(--ink);
   margin-bottom: 12px;
 }
+.method {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
 .coach-tools, .coach-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .coach-tools { margin-bottom: 12px; }
 .coach-toggle { display: none; }

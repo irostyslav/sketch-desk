@@ -150,7 +150,16 @@ const GUIDES = {
   "windows-shadow"(ctx, w, h) { windowParts(ctx, w, h, 3); },
   figures(ctx, w, h) {
     [0.62, 0.48, 0.36, 0.52].forEach((s, i) => drawFigure(ctx, w * (0.18 + i * 0.2), h * 0.8, h * s * 0.42));
-  }
+  },
+  "trigger-find"(ctx, w, h) { triggerLine(ctx, w, h, 1); },
+  "trigger-extend"(ctx, w, h) { triggerLine(ctx, w, h, 2); },
+  "trigger-hit"(ctx, w, h) { triggerLine(ctx, w, h, 3); },
+  "circles-only"(ctx, w, h) { circlesAndLines(ctx, w, h, 1); },
+  "circles-straights"(ctx, w, h) { circlesAndLines(ctx, w, h, 2); },
+  "circles-parallel"(ctx, w, h) { circlesAndLines(ctx, w, h, 3); },
+  "double-box"(ctx, w, h) { doubleFunction(ctx, w, h, 1); },
+  "double-leg"(ctx, w, h) { doubleFunction(ctx, w, h, 2); },
+  "double-weight"(ctx, w, h) { doubleFunction(ctx, w, h, 3); }
 };
 
 function strokeGuide(ctx, draw, width) {
@@ -629,4 +638,90 @@ function drawFigure(ctx, x, ground, height) {
     ctx.moveTo(x + 3 * s, ground - height + 32 * s);
     ctx.lineTo(x + 5 * s, ground);
   }, 1.1);
+}
+
+function triggerLine(ctx, w, h, level) {
+  const cx = w * 0.4;
+  const cy = h * 0.56;
+  const r = Math.min(w, h) * 0.11;
+  const rimY = cy - r * 0.15;
+  const x0 = cx - r * 0.85;
+  const y0 = cy + r * 0.72;
+  const x1 = w * 0.9;
+  const y1 = h * 0.1;
+  const t = (rimY - y0) / (y1 - y0);
+  const hitX = x0 + (x1 - x0) * t;
+  strokeGuide(ctx, () => {
+    ctx.ellipse(cx, rimY, r * 1.05, r * 0.28, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - r, rimY);
+    ctx.lineTo(cx - r * 0.72, cy + r * 1.15);
+    ctx.lineTo(cx + r * 0.72, cy + r * 1.15);
+    ctx.lineTo(cx + r, rimY);
+  }, 1.15);
+  const endX = level >= 2 ? x1 : hitX;
+  const endY = level >= 2 ? y1 : rimY;
+  strokeGuide(ctx, () => {
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(endX, endY);
+  }, 1.25);
+  if (level >= 3) {
+    dot(ctx, hitX, rimY);
+    dot(ctx, x1, y1);
+  }
+}
+
+function circlesAndLines(ctx, w, h, level) {
+  const px = w * 0.36;
+  const py = h * 0.58;
+  const pr = Math.min(w, h) * 0.12;
+  const tilt = level >= 3 ? 0.08 : 0;
+  strokeGuide(ctx, () => {
+    ctx.ellipse(px, py, pr, pr * 0.92, 0, 0, Math.PI * 2);
+    ctx.ellipse(px - pr * 0.05, py - pr * 1.15, pr * 0.62, pr * 0.55, 0, 0, Math.PI * 2);
+  }, 1.15);
+  const cShift = level >= 3 ? w * 0.06 : 0;
+  strokeGuide(ctx, () => {
+    ctx.ellipse(w * 0.68 + cShift, h * 0.62, pr * 0.72, pr * 0.28, 0, 0, Math.PI * 2);
+  }, 1.15);
+  if (level < 2) return;
+  strokeGuide(ctx, () => {
+    ctx.moveTo(px - pr * 0.95, py - pr * 0.15);
+    ctx.lineTo(px - pr * 0.35, py - pr * 1.55);
+    ctx.moveTo(px + pr * 0.9, py - pr * 0.1);
+    ctx.lineTo(px + pr * 0.28, py - pr * 1.5);
+    ctx.moveTo(px, py - pr * 1.65);
+    ctx.lineTo(px + pr * 0.08, py - pr * 2.05);
+  }, 1.1);
+  strokeGuide(ctx, () => {
+    const top = h * 0.62;
+    const foot = h * 0.84;
+    ctx.moveTo(w * 0.68 + cShift - pr * 0.62, top);
+    ctx.lineTo(w * 0.68 + cShift - pr * 0.5 + tilt * w, foot);
+    ctx.moveTo(w * 0.68 + cShift + pr * 0.62, top);
+    ctx.lineTo(w * 0.68 + cShift + pr * 0.5 + tilt * w, foot);
+  }, 1.1);
+}
+
+function doubleFunction(ctx, w, h, level) {
+  const x = w * 0.28;
+  const y = h * 0.42;
+  const bw = w * 0.34;
+  const bh = h * 0.28;
+  strokeGuide(ctx, () => ctx.rect(x, y, bw, bh), 1.2);
+  if (level < 2) return;
+  const x0 = x + bw * 0.22;
+  const y0 = y;
+  const xk = x + bw * 0.7;
+  const yk = y - h * 0.08;
+  const xc = w * 0.9;
+  const yc = h * 0.1;
+  strokeGuide(ctx, () => {
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(xk, yk);
+  }, level >= 3 ? 1.8 : 1.15);
+  strokeGuide(ctx, () => {
+    ctx.moveTo(xk, yk);
+    ctx.lineTo(xc, yc);
+  }, level >= 3 ? 0.7 : 1.15);
+  if (level >= 3) dot(ctx, xc, yc);
 }

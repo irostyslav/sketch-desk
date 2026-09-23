@@ -19,6 +19,7 @@ A beginner’s drawing workbook you can keep open as a reference. Each chapter h
 - **Foundations** — lines, curves, ellipses, hatching, mug & bottle
 - **Trees** — skeleton, canopy clumps, core shadow, palm, a page of trees, wander
 - **Street & facade** — shop house, one-point street, window rhythm, people for scale
+- **Design logic** — trigger line, circles and straights, a line with two jobs. Original constructions after Tommy Hoppe’s tactics, not a copy of a plate.
 
 Each step has a procedural ghost. Show me draws that ghost in order. Test yourself hides it; Compare puts it back over your ink. Ink stays when you change steps. Optional 3, 5, or 10 minute timer. Keep saves a thumbnail page on this device. Save PNG downloads it.
 
