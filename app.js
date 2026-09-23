@@ -1391,6 +1391,14 @@
           </div>
         </div>
         <input id="station-cam" type="file" accept="image/*" capture="environment" hidden />
+        <div class="capture-frame" id="capture-frame" hidden>
+          <div class="page-frame"><span>Place the page inside this rectangle.</span></div>
+          <div class="actions">
+            <button class="btn btn-ink" id="capture-open" type="button">Open camera</button>
+            <button class="btn btn-ghost" id="capture-cancel" type="button">Cancel</button>
+          </div>
+        </div>
+        <div class="capture-compare" id="capture-compare" hidden></div>
         <div class="toast" id="toast"></div>
       </div>`;
     document.getElementById("station-exit").onclick = () => exitStation();
@@ -1400,6 +1408,8 @@
     };
     document.getElementById("station-go").onclick = () => stationPrimary();
     document.getElementById("station-capture").onclick = () => captureStation();
+    document.getElementById("capture-open").onclick = () => openStationCamera();
+    document.getElementById("capture-cancel").onclick = () => closeCaptureFrame();
     document.getElementById("station-stay").onclick = () => {
       document.getElementById("station-confirm").hidden = true;
     };
@@ -1625,6 +1635,16 @@
     toast("Session cleared.");
   }
   function exitStation() {
+    const frame = document.getElementById("capture-frame");
+    if (frame && !frame.hidden) {
+      closeCaptureFrame();
+      return;
+    }
+    const compare = document.getElementById("capture-compare");
+    if (compare && !compare.hidden) {
+      compare.hidden = true;
+      return;
+    }
     if (stationPhase === "running") {
       const confirm = document.getElementById("station-confirm");
       if (confirm) confirm.hidden = false;
@@ -1637,7 +1657,16 @@
     }
     showLibrary();
   }
+  function closeCaptureFrame() {
+    const frame = document.getElementById("capture-frame");
+    if (frame) frame.hidden = true;
+  }
   function captureStation() {
+    const frame = document.getElementById("capture-frame");
+    if (!frame || captureWait) return;
+    frame.hidden = false;
+  }
+  function openStationCamera() {
     if (captureWait) return;
     const input = document.getElementById("station-cam");
     if (!input) return;
@@ -1648,7 +1677,8 @@
       captureWait = false;
       window.removeEventListener("focus", onFocus);
       input.onchange = null;
-      storeAttempt(file);
+      closeCaptureFrame();
+      storeAttempt(file || null);
     };
     input.onchange = () => finish(input.files && input.files[0]);
     const onFocus = () => {
@@ -1659,6 +1689,43 @@
     window.addEventListener("focus", onFocus);
     input.click();
   }
+  function showCaptureCompare(attempt, note) {
+    const panel = document.getElementById("capture-compare");
+    if (!panel) {
+      toast(note);
+      return;
+    }
+    const card = cardById(attempt.cardId);
+    panel.hidden = false;
+    panel.innerHTML = `
+      <div class="capture-compare-card">
+        <p class="eyebrow">Compare</p>
+        <h2>${esc(card ? card.title : "Attempt")}</h2>
+        <p class="lede">${esc(note)} Nothing here is scored.</p>
+        <div class="compare-grid">
+          <figure>
+            ${attempt.imageDataUrl ? `<img id="fresh-photo" alt="Your page" />` : `<p class="empty-pages">No photo for this session.</p>`}
+            <figcaption>Your page</figcaption>
+          </figure>
+          <figure>
+            ${attempt.referenceDataUrl ? `<img id="fresh-ref" alt="Reference" />` : `<p class="empty-pages">No reference.</p>`}
+            <figcaption>Reference</figcaption>
+          </figure>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="compare-stay" type="button">Stay</button>
+          <button class="btn btn-ink" id="compare-library" type="button">Contents</button>
+        </div>
+      </div>`;
+    const photo = document.getElementById("fresh-photo");
+    if (photo) photo.src = attempt.imageDataUrl;
+    const ref = document.getElementById("fresh-ref");
+    if (ref) ref.src = attempt.referenceDataUrl;
+    document.getElementById("compare-stay").onclick = () => {
+      panel.hidden = true;
+    };
+    document.getElementById("compare-library").onclick = () => showLibrary();
+  }
   function storeAttempt(file) {
     const card = currentCard();
     const canvas = document.getElementById("station-ink");
@@ -1666,8 +1733,8 @@
     let reference = "";
     try { reference = canvas ? canvas.toDataURL("image/png") : ""; } catch (_) {}
     const commit = (image) => {
-      state.attempts.unshift({
-        id: (window.crypto && crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
+      const attempt = {
+        id: uid(),
         cardId: card.id,
         technique: card.technique,
         sourceId: null,
@@ -1676,10 +1743,12 @@
         referenceDataUrl: reference || "",
         createdAt: new Date().toISOString(),
         durationMin: state.station.lastDurationMin
-      });
+      };
+      state.attempts.unshift(attempt);
       markPracticed();
       const kept = save();
-      toast(kept ? (file ? "Saved." : "Saved the reference.") : "Photo too large — saved session without image.");
+      const note = kept ? (file ? "Saved." : "Saved the reference.") : "Photo too large — saved session without image.";
+      showCaptureCompare(attempt, note);
     };
     if (!file) {
       commit("");
