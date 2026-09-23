@@ -12,6 +12,7 @@ A beginner’s drawing workbook you can keep open as a reference. Each chapter h
 4. **Practice station** puts one reference on the table. Capture shows a frame for the page, then the photo beside the reference. Nothing is scored.
 5. **Sources** are links and one-line notes, grouped by technique. **Attempts** puts your photo next to the reference. Nothing is scored.
 6. **Roadmap** is a suggested path. Any technique can be practiced immediately.
+7. **Profile** is a month of practice days. A ring means a photo was kept. Export downloads the attempt list, not the photos.
 
 ## Chapters
 

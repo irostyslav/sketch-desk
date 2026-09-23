@@ -34,7 +34,10 @@
       touch: {}
     },
     attemptFilter: "all",
-    compareId: null
+    compareId: null,
+    days: {},
+    profileMonth: "",
+    profileDay: ""
   };
 
   const TECHNIQUES = [
@@ -117,6 +120,30 @@
           state.station.touch = touch;
         }
       }
+      state.days = {};
+      if (raw.days && typeof raw.days === "object") {
+        Object.keys(raw.days).forEach((key) => {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+          const day = raw.days[key] || {};
+          state.days[key] = {
+            minutes: Math.max(0, Number(day.minutes) || 0),
+            image: !!day.image
+          };
+        });
+      }
+      state.attempts.forEach((attempt) => {
+        const key = String(attempt.createdAt || "").slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+        if (!state.days[key]) {
+          state.days[key] = {
+            minutes: Math.max(0, Number(attempt.durationMin) || 0),
+            image: !!attempt.imageDataUrl
+          };
+        } else if (attempt.imageDataUrl) state.days[key].image = true;
+      });
+      if (state.lastDay && /^\d{4}-\d{2}-\d{2}$/.test(state.lastDay) && !state.days[state.lastDay]) {
+        state.days[state.lastDay] = { minutes: 0, image: false };
+      }
     } catch (_) {}
     applyAppearance();
     tickStreak();
@@ -137,7 +164,8 @@
         lastCardId: state.station.lastCardId,
         focusId: state.station.focusId || "",
         touch: state.station.touch || {}
-      }
+      },
+      days: state.days
     });
     try {
       localStorage.setItem(STORE, JSON.stringify(payload()));
@@ -154,9 +182,21 @@
     const gap = dayNumber(t) - dayNumber(state.lastDay);
     if (gap > 1) state.streak = 0;
   }
+  function noteDay(key, minutes, image) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+    const prev = state.days[key] || { minutes: 0, image: false };
+    state.days[key] = {
+      minutes: prev.minutes + (Number(minutes) || 0),
+      image: prev.image || !!image
+    };
+  }
   function markPracticed() {
     const t = todayKey();
-    if (state.lastDay === t) return;
+    noteDay(t, 0, false);
+    if (state.lastDay === t) {
+      save();
+      return;
+    }
     const prev = state.lastDay ? dayNumber(t) - dayNumber(state.lastDay) : 99;
     state.streak = prev === 1 ? state.streak + 1 : 1;
     state.lastDay = t;
@@ -200,6 +240,7 @@
     else if (state.view === "sources") renderSources();
     else if (state.view === "attempts") renderAttempts();
     else if (state.view === "roadmap") renderRoadmap();
+    else if (state.view === "profile") renderProfile();
     else renderStudio();
   }
 
@@ -248,6 +289,7 @@
             </div>
           </div>
         </div>
+        ${pickupHtml()}
         <div class="howto">
           <div><p class="eyebrow">Read</p><p>The technique, when you want the words.</p></div>
           <div><p class="eyebrow">Watch</p><p>The pen on the paper, and the thinking behind each mark.</p></div>
@@ -257,6 +299,7 @@
           <button class="btn btn-ghost" type="button" id="open-sources">Sources</button>
           <button class="btn btn-ghost" type="button" id="open-attempts">Attempts${state.attempts.length ? ` · ${state.attempts.length}` : ""}</button>
           <button class="btn btn-ghost" type="button" id="open-roadmap">Roadmap</button>
+          <button class="btn btn-ghost" type="button" id="open-profile">Profile</button>
         </div>
         <div class="gallery-head"><h2>Your pages</h2><p>Exercises you kept on this device</p></div>
         <div id="gallery-mount"><p class="empty-pages">Loading pages…</p></div>
@@ -301,6 +344,8 @@
     if (attemptsBtn) attemptsBtn.onclick = () => openAttempts();
     const roadmapBtn = document.getElementById("open-roadmap");
     if (roadmapBtn) roadmapBtn.onclick = () => openRoadmap();
+    const profileBtn = document.getElementById("open-profile");
+    if (profileBtn) profileBtn.onclick = () => openProfile();
     paintGallery();
   }
 
@@ -704,6 +749,178 @@
     });
     app.querySelectorAll("[data-zoom]").forEach((el) => {
       el.onclick = () => focusRoadmap(el.dataset.zoom);
+    });
+  }
+  function pickupHtml() {
+    const keys = Object.keys(state.days || {});
+    if (state.lastDay) keys.push(state.lastDay);
+    let last = "";
+    keys.forEach((key) => {
+      if (key > last) last = key;
+    });
+    const gap = last ? dayNumber(todayKey()) - dayNumber(last) : 0;
+    if (!last || !(gap > 1)) return "";
+    const card = cardById(state.station.lastCardId);
+    let title = card ? card.title : "";
+    if (!title && state.lastLesson) {
+      const lesson = LESSONS.find((l) => l.id === state.lastLesson);
+      if (lesson) title = lesson.title;
+    }
+    return `<p class="pickup">Pick up where you left off${title ? ". " + esc(title) : "."}</p>`;
+  }
+  function heatLevel(day) {
+    if (!day) return 0;
+    const minutes = day.minutes || 0;
+    if (minutes >= 30) return 3;
+    if (minutes >= 10) return 2;
+    return 1;
+  }
+  function monthLabel(key) {
+    const parts = String(key || "").split("-").map(Number);
+    const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    if (parts.length < 2 || !names[parts[1] - 1]) return "";
+    return names[parts[1] - 1] + " " + parts[0];
+  }
+  function shiftMonth(key, delta) {
+    const parts = String(key || "").split("-").map(Number);
+    const date = new Date(parts[0], (parts[1] || 1) - 1 + delta, 1);
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+  }
+  function attemptsOn(day) {
+    return state.attempts.filter((a) => String(a.createdAt || "").slice(0, 10) === day);
+  }
+  function openProfile() {
+    state.view = "profile";
+    if (!state.profileMonth) state.profileMonth = todayKey().slice(0, 7);
+    state.profileDay = "";
+    render();
+  }
+  function exportAttempts() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      attempts: state.attempts.map((a) => ({
+        id: a.id,
+        cardId: a.cardId,
+        technique: a.technique,
+        sourceId: a.sourceId || null,
+        lessonId: a.lessonId || null,
+        createdAt: a.createdAt,
+        durationMin: a.durationMin || 0,
+        hasImage: !!a.imageDataUrl
+      }))
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sketch-desk-attempts.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function renderProfile() {
+    if (pad) {
+      pad.destroy();
+      pad = null;
+    }
+    if (!state.profileMonth) state.profileMonth = todayKey().slice(0, 7);
+    if (state.profileDay) {
+      const rows = attemptsOn(state.profileDay);
+      const marked = state.days[state.profileDay];
+      app.innerHTML = `
+        <div class="library">
+          <div class="record-head">
+            <div>
+              <button class="btn btn-ghost" type="button" id="profile-back">Month</button>
+              <h1>${esc(monthLabel(state.profileDay.slice(0, 7)))} ${esc(String(Number(state.profileDay.slice(8, 10))))}</h1>
+              <p class="lede">${marked ? "Practiced." : "No practice."}${marked && marked.image ? " A photo was kept." : ""}</p>
+            </div>
+          </div>
+          ${rows.length ? `<div class="attempt-grid">${rows.map((a) => {
+            const card = cardById(a.cardId);
+            return `<button class="attempt-tile" type="button" data-attempt="${esc(a.id)}">
+              <span class="attempt-blank">${a.imageDataUrl ? "Photo" : "No photo"}</span>
+              <span class="attempt-copy"><b>${esc(card ? card.title : "Attempt")}</b><i>${esc(String(a.durationMin || 0))} min</i></span>
+            </button>`;
+          }).join("")}</div>` : `<p class="empty-pages">${marked ? "Practiced this day. No photo was kept." : "Nothing on this day."}</p>`}
+        </div>`;
+      document.getElementById("profile-back").onclick = () => {
+        state.profileDay = "";
+        render();
+      };
+      app.querySelectorAll("[data-attempt]").forEach((el) => {
+        el.onclick = () => {
+          const row = state.attempts.find((a) => a.id === el.dataset.attempt);
+          if (row) noteTouch(row.technique);
+          state.view = "attempts";
+          state.compareId = el.dataset.attempt;
+          save();
+          render();
+        };
+      });
+      return;
+    }
+    const parts = state.profileMonth.split("-").map(Number);
+    const first = new Date(parts[0], parts[1] - 1, 1);
+    const blanks = first.getDay();
+    const count = new Date(parts[0], parts[1], 0).getDate();
+    const today = todayKey();
+    const atCurrent = state.profileMonth >= today.slice(0, 7);
+    let cells = "";
+    for (let i = 0; i < blanks; i++) cells += `<span></span>`;
+    for (let day = 1; day <= count; day++) {
+      const key = state.profileMonth + "-" + String(day).padStart(2, "0");
+      const info = state.days[key];
+      const level = heatLevel(info);
+      const future = key > today;
+      cells += `<button class="heat l${level}${info && info.image ? " shot" : ""}" type="button" data-day="${key}" ${future ? "disabled" : ""}>${info && info.image ? `<span class="ring"></span>` : ""}</button>`;
+    }
+    app.innerHTML = `
+      <div class="library">
+        <div class="record-head">
+          <div>
+            <button class="btn btn-ghost" type="button" id="back">Contents</button>
+            <h1>Profile</h1>
+            <p class="lede">Days you practiced. A ring means a photo was kept.</p>
+          </div>
+          <button class="btn btn-ghost" type="button" id="export-attempts">Export</button>
+        </div>
+        <div class="month-bar">
+          <button class="btn btn-ghost" type="button" id="month-prev">Previous</button>
+          <h2>${esc(monthLabel(state.profileMonth))}</h2>
+          <button class="btn btn-ghost" type="button" id="month-next" ${atCurrent ? "disabled" : ""}>Next</button>
+        </div>
+        <div class="heat-grid" aria-label="${esc(monthLabel(state.profileMonth))}">
+          ${["S", "M", "T", "W", "T", "F", "S"].map((d) => `<span class="heat-label">${d}</span>`).join("")}
+          ${cells}
+        </div>
+        <div class="heat-key">
+          <span><i class="heat l0"></i> None</span>
+          <span><i class="heat l1"></i> Practiced</span>
+          <span><i class="heat l2"></i> Longer</span>
+          <span><i class="heat l3"></i> Longest</span>
+          <span><i class="heat l1 shot"><span class="ring"></span></i> Photo</span>
+        </div>
+      </div>`;
+    document.getElementById("back").onclick = () => showLibrary();
+    document.getElementById("export-attempts").onclick = () => exportAttempts();
+    document.getElementById("month-prev").onclick = () => {
+      state.profileMonth = shiftMonth(state.profileMonth, -1);
+      render();
+    };
+    const next = document.getElementById("month-next");
+    if (next) next.onclick = () => {
+      if (state.profileMonth >= todayKey().slice(0, 7)) return;
+      state.profileMonth = shiftMonth(state.profileMonth, 1);
+      render();
+    };
+    app.querySelectorAll("[data-day]").forEach((el) => {
+      el.onclick = () => {
+        if (el.disabled || el.dataset.day > todayKey()) return;
+        state.profileDay = el.dataset.day;
+        render();
+      };
     });
   }
   function lessonChecks(technique, selected) {
@@ -1921,6 +2138,7 @@
         durationMin: state.station.lastDurationMin
       };
       state.attempts.unshift(attempt);
+      noteDay(todayKey(), attempt.durationMin, !!attempt.imageDataUrl);
       markPracticed();
       const kept = save();
       const note = kept ? (file ? "Saved." : "Saved the reference.") : "Photo too large — saved session without image.";
@@ -2271,7 +2489,12 @@
         focusRoadmap("");
         return;
       }
-      if (state.view === "sources" || state.view === "attempts" || state.view === "roadmap") {
+      if (state.view === "profile" && state.profileDay) {
+        state.profileDay = "";
+        render();
+        return;
+      }
+      if (state.view === "sources" || state.view === "attempts" || state.view === "roadmap" || state.view === "profile") {
         showLibrary();
         return;
       }
