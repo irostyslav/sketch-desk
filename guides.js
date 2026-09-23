@@ -68,10 +68,16 @@ const GUIDES = {
       for (let i = 0; i < 40; i++) { x += Math.sin(i * 0.7) * 28 + 6; y += Math.cos(i * 0.45) * 22 - 8; ctx.lineTo(x, y); }
     }, 1);
   },
+  "tree-page-shapes"(ctx, w, h) { treePage(ctx, w, h, { shapes: true }); },
+  "tree-page-mid"(ctx, w, h) { treePage(ctx, w, h, { shapes: true, mid: true }); },
+  "tree-page-darks"(ctx, w, h) { treePage(ctx, w, h, { shapes: true, mid: true, darks: true }); },
   "shop-block"(ctx, w, h) { shopParts(ctx, w, h, { block: true }); },
   "shop-openings"(ctx, w, h) { shopParts(ctx, w, h, { block: true, openings: true }); },
   "shop-detail"(ctx, w, h) { shopParts(ctx, w, h, { block: true, openings: true, detail: true }); },
   "shop-life"(ctx, w, h) { shopParts(ctx, w, h, { block: true, openings: true, detail: true, life: true }); },
+  "amsterdam-block"(ctx, w, h) { amsterdamParts(ctx, w, h, { block: true }); },
+  "amsterdam-windows"(ctx, w, h) { amsterdamParts(ctx, w, h, { block: true, windows: true }); },
+  "amsterdam-ink"(ctx, w, h) { amsterdamParts(ctx, w, h, { block: true, windows: true, ink: true }); },
   figures(ctx, w, h) {
     [0.55, 0.42, 0.32, 0.48].forEach((s, i) => drawFigure(ctx, w * (0.18 + i * 0.2), h * 0.78, h * s));
   }
@@ -140,6 +146,53 @@ function treeParts(ctx, w, h, o) {
   }
 }
 
+function treePage(ctx, w, h, o) {
+  const trees = [
+    { x: 0.16, g: 0.46, s: 0.28, kind: "round" },
+    { x: 0.38, g: 0.48, s: 0.34, kind: "tall" },
+    { x: 0.60, g: 0.45, s: 0.24, kind: "round" },
+    { x: 0.82, g: 0.47, s: 0.30, kind: "pine" },
+    { x: 0.24, g: 0.84, s: 0.26, kind: "pine" },
+    { x: 0.48, g: 0.86, s: 0.32, kind: "round" },
+    { x: 0.70, g: 0.83, s: 0.22, kind: "tall" },
+    { x: 0.88, g: 0.85, s: 0.20, kind: "round" },
+  ];
+  ctx.save(); ctx.fillStyle = "rgba(196, 92, 38, 0.75)"; ctx.beginPath(); ctx.arc(w * 0.08, h * 0.10, 6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  trees.forEach((t) => {
+    const x = w * t.x, ground = h * t.g, height = h * t.s, top = ground - height, trunkW = Math.max(3, height * 0.06);
+    if (o.shapes) {
+      strokeGuide(ctx, () => {
+        ctx.moveTo(x - trunkW, ground); ctx.lineTo(x - trunkW * 0.45, ground - height * 0.38);
+        ctx.moveTo(x + trunkW, ground); ctx.lineTo(x + trunkW * 0.45, ground - height * 0.38);
+        if (t.kind === "pine") {
+          ctx.moveTo(x, top); ctx.lineTo(x + height * 0.22, ground - height * 0.22); ctx.lineTo(x - height * 0.22, ground - height * 0.22); ctx.closePath();
+          ctx.moveTo(x, top + height * 0.22); ctx.lineTo(x + height * 0.28, ground - height * 0.02); ctx.lineTo(x - height * 0.28, ground - height * 0.02); ctx.closePath();
+        } else if (t.kind === "tall") {
+          ctx.ellipse(x, top + height * 0.28, height * 0.16, height * 0.32, 0, 0, Math.PI * 2);
+        } else {
+          ctx.ellipse(x - height * 0.04, top + height * 0.28, height * 0.22, height * 0.22, -0.2, 0, Math.PI * 2);
+          ctx.ellipse(x + height * 0.12, top + height * 0.36, height * 0.16, height * 0.16, 0.3, 0, Math.PI * 2);
+        }
+      }, 1);
+    }
+    if (o.mid) {
+      strokeGuide(ctx, () => {
+        for (let i = 0; i < 7; i++) {
+          const yy = top + height * 0.22 + i * (height * 0.06);
+          ctx.moveTo(x + 2, yy); ctx.lineTo(x + height * 0.16, yy + 6);
+        }
+      }, 0.7);
+    }
+    if (o.darks) {
+      strokeGuide(ctx, () => {
+        for (let i = 0; i < 4; i++) { ctx.moveTo(x + 4, top + height * 0.3 + i * 5); ctx.lineTo(x + 12, top + height * 0.36 + i * 5); }
+        ctx.moveTo(x + trunkW * 0.2, ground - height * 0.3); ctx.lineTo(x + trunkW, ground - 2);
+        ctx.moveTo(x + 4, ground); ctx.quadraticCurveTo(x + 18, ground + 4, x + 28, ground);
+      }, 0.9);
+    }
+  });
+}
+
 function shopParts(ctx, w, h, o) {
   const x = w * 0.22, y = h * 0.18, fw = w * 0.56, fh = h * 0.6, ground = y + fh;
   if (o.block) {
@@ -168,6 +221,110 @@ function shopParts(ctx, w, h, o) {
   if (o.life) {
     drawFigure(ctx, x + fw + 36, ground, 52);
     strokeGuide(ctx, () => { ctx.moveTo(x + fw * 0.14, ground); ctx.quadraticCurveTo(x + fw * 0.3, ground + 10, x + fw * 0.5, ground); }, 1);
+  }
+}
+
+function amsterdamParts(ctx, w, h, o) {
+  const quay = h * 0.70;
+  const houses = [
+    { x: 0.06, bw: 0.16, hh: 0.46, gable: "step", lean: 0.012 },
+    { x: 0.22, bw: 0.18, hh: 0.54, gable: "bell", lean: -0.016 },
+    { x: 0.40, bw: 0.17, hh: 0.50, gable: "neck", lean: 0.008 },
+    { x: 0.57, bw: 0.15, hh: 0.42, gable: "step", lean: -0.01 },
+    { x: 0.72, bw: 0.18, hh: 0.52, gable: "bell", lean: 0.014 },
+  ];
+  if (o.block) {
+    strokeGuide(ctx, () => {
+      ctx.moveTo(w * 0.03, quay); ctx.lineTo(w * 0.97, quay);
+      ctx.moveTo(w * 0.03, h * 0.92); ctx.quadraticCurveTo(w * 0.5, h * 0.96, w * 0.97, h * 0.91);
+    }, 1.3);
+    houses.forEach((house) => {
+      const x = w * house.x, bw = w * house.bw, top = quay - h * house.hh, lean = bw * house.lean * 8;
+      strokeGuide(ctx, () => {
+        ctx.moveTo(x, quay); ctx.lineTo(x + lean, top + h * 0.08); ctx.lineTo(x + bw + lean, top + h * 0.08); ctx.lineTo(x + bw, quay);
+        if (house.gable === "step") {
+          let sx = x + lean, sy = top + h * 0.08, mid = x + bw / 2 + lean;
+          for (let i = 0; i < 3; i++) {
+            const rise = h * 0.022, run = (mid - sx) / (3 - i + 0.2);
+            ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - rise); ctx.lineTo(sx + run, sy - rise);
+            sx += run; sy -= rise;
+          }
+          ctx.lineTo(mid, top);
+          sx = x + bw + lean; sy = top + h * 0.08;
+          for (let i = 0; i < 3; i++) {
+            const rise = h * 0.022, run = (sx - mid) / (3 - i + 0.2);
+            ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - rise); ctx.lineTo(sx - run, sy - rise);
+            sx -= run; sy -= rise;
+          }
+        } else if (house.gable === "neck") {
+          const mid = x + bw / 2 + lean;
+          ctx.moveTo(x + lean + bw * 0.22, top + h * 0.08);
+          ctx.lineTo(x + lean + bw * 0.28, top + h * 0.02);
+          ctx.lineTo(mid - bw * 0.08, top + h * 0.02);
+          ctx.lineTo(mid - bw * 0.06, top);
+          ctx.lineTo(mid + bw * 0.06, top);
+          ctx.lineTo(mid + bw * 0.08, top + h * 0.02);
+          ctx.lineTo(x + lean + bw * 0.72, top + h * 0.02);
+          ctx.lineTo(x + lean + bw * 0.78, top + h * 0.08);
+        } else {
+          const mid = x + bw / 2 + lean;
+          ctx.moveTo(x + lean, top + h * 0.08);
+          ctx.quadraticCurveTo(mid - bw * 0.18, top - h * 0.01, mid, top);
+          ctx.quadraticCurveTo(mid + bw * 0.18, top - h * 0.01, x + bw + lean, top + h * 0.08);
+        }
+      }, 1.25);
+    });
+  }
+  if (o.windows) {
+    houses.forEach((house) => {
+      const x = w * house.x, bw = w * house.bw, top = quay - h * house.hh, lean = bw * house.lean * 8;
+      const cols = house.bw > 0.16 ? 3 : 2, marginX = bw * 0.14;
+      const winW = (bw - marginX * 2) / cols - bw * 0.04, winH = h * 0.07;
+      strokeGuide(ctx, () => {
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < cols; c++) {
+            const wx = x + marginX + c * ((bw - marginX * 2) / cols) + lean * (0.7 - r * 0.15);
+            const wy = top + h * 0.12 + r * (h * 0.11);
+            ctx.rect(wx, wy, winW, winH);
+            ctx.moveTo(wx + winW / 2, wy); ctx.lineTo(wx + winW / 2, wy + winH);
+          }
+        }
+        const doorW = bw * 0.28, doorH = h * 0.12, dx = x + bw * 0.36;
+        ctx.rect(dx, quay - doorH, doorW, doorH);
+        ctx.moveTo(dx + doorW / 2, quay - doorH); ctx.lineTo(dx + doorW / 2, quay);
+      }, 0.95);
+    });
+  }
+  if (o.ink) {
+    houses.forEach((house, i) => {
+      const x = w * house.x, bw = w * house.bw, doorW = bw * 0.28, doorH = h * 0.12, dx = x + bw * 0.36;
+      if (i % 2 === 0) {
+        strokeGuide(ctx, () => {
+          for (let k = 0; k < 8; k++) {
+            ctx.moveTo(dx + 3, quay - doorH + 4 + k * (doorH / 9));
+            ctx.lineTo(dx + doorW - 3, quay - doorH + 8 + k * (doorH / 9));
+          }
+        }, 0.8);
+      }
+    });
+    strokeGuide(ctx, () => {
+      houses.forEach((house) => {
+        const x = w * house.x, bw = w * house.bw, top = quay - h * house.hh;
+        for (let i = 0; i < 5; i++) {
+          ctx.moveTo(x + bw * 0.2 + i * 6, quay + 8);
+          ctx.lineTo(x + bw * 0.15 + i * 6, quay + 8 + (quay - top) * 0.18);
+        }
+      });
+    }, 0.7);
+    drawFigure(ctx, w * 0.34, quay, 42);
+    drawFigure(ctx, w * 0.63, quay, 36);
+    strokeGuide(ctx, () => {
+      const bx = w * 0.48, by = quay;
+      ctx.ellipse(bx - 16, by - 6, 7, 7, 0, 0, Math.PI * 2);
+      ctx.ellipse(bx + 14, by - 6, 7, 7, 0, 0, Math.PI * 2);
+      ctx.moveTo(bx - 16, by - 6); ctx.lineTo(bx + 14, by - 6);
+      ctx.moveTo(bx - 4, by - 6); ctx.lineTo(bx - 2, by - 18); ctx.lineTo(bx + 8, by - 16);
+    }, 1);
   }
 }
 
