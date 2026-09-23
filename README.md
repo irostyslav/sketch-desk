@@ -1,6 +1,8 @@
 # Sketch Desk
 
-A beginner’s drawing workbook you can keep open as a reference. Each chapter has a technique, a worked example, and a practice exercise. No account. Open `index.html`, or serve this folder with any static file server. Progress and kept pages stay on the device.
+**Open the app:** [https://irostyslav.github.io/sketch-desk/](https://irostyslav.github.io/sketch-desk/)
+
+A beginner’s drawing workbook you can keep open as a reference. Each chapter has a technique, a worked example, and a practice exercise. No account. Progress and kept pages stay on the device. The site is not for search engines: crawlers are disallowed, and the page asks not to be indexed.
 
 ## How to use it
 

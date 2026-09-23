@@ -1,0 +1,16 @@
+# The published site also inherits https://irostyslav.github.io/robots.txt
+# which disallows every crawler for this host.
+User-agent: *
+Disallow: /
+
+User-agent: Googlebot
+Disallow: /
+
+User-agent: Googlebot-Image
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Bingbot
+Disallow: /
