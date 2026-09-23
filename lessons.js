@@ -1,0 +1,128 @@
+const PATHS = [
+  { id: "foundations", title: "Foundations", blurb: "Train the hand before the subject." },
+  { id: "trees", title: "Trees", blurb: "Hariz’s architectural tree method, broken into drills." },
+  { id: "architecture", title: "Street & facade", blurb: "Shop houses, windows, and people for scale." },
+];
+
+const LESSONS = [
+  {
+    id: "lines",
+    path: "foundations",
+    title: "Lines that land",
+    level: "Start here",
+    minutes: 6,
+    blurb: "Draw from the shoulder. One confident stroke beats ten scratchy ones.",
+    steps: [
+      { title: "Ghost the stroke", coach: "Hover the pen over the faint guides and rehearse the motion in the air twice. Then put the line down in one pass.", hint: "Look at the end point, not the nib.", guide: "warmup-lines" },
+      { title: "Curves without steering", coach: "Same idea, now with arcs. Keep the wrist quiet. The curve should feel like a comma, not a staircase.", hint: "If it wobbles, slow down — don’t add extra strokes.", guide: "warmup-curves" },
+      { title: "Ellipses in a tube", coach: "Ellipses are just circles seen in perspective. Draw through the box as if the ellipse continues behind the paper.", hint: "The far side of the ellipse is thinner.", guide: "warmup-ellipses" }
+    ]
+  },
+  {
+    id: "hatching",
+    path: "foundations",
+    title: "Hatching & value",
+    level: "Start here",
+    minutes: 8,
+    blurb: "Trees and facades only work if your darks are dark. Practice bands of tone.",
+    steps: [
+      { title: "Four value bands", coach: "Fill each band with parallel hatching. Leave paper white in band 1. Pack the lines tighter as you move right.", hint: "Change spacing, not pressure, to get darker.", guide: "value-bands" },
+      { title: "Form on a cylinder", coach: "Hatch around the form, not straight down the page. Darkest on the side opposite the sun, with a sliver of reflected light on the edge.", hint: "Sun is coming from the upper left.", guide: "value-cylinder" }
+    ]
+  },
+  {
+    id: "tree-skeleton",
+    path: "trees",
+    title: "Tree skeleton",
+    level: "Trees · 1",
+    minutes: 8,
+    blurb: "Level 1 of the Instagram guide: trunk and branches only. No leaves yet.",
+    steps: [
+      { title: "Plant the trunk", coach: "Two slightly bowed lines that flare at the ground and taper as they rise. Trees are not telephone poles.", hint: "Leave a gap of air at the base so it can sit on soil later.", guide: "tree-trunk" },
+      { title: "Primary branches", coach: "Branches fork and get thinner. They should never be thicker than the limb they grow from. Keep the gesture open — like a dancer’s arms.", hint: "Avoid perfect symmetry. Nature is lopsided on purpose.", guide: "tree-branches" },
+      { title: "Twigs at the tips", coach: "Short, quicker marks at the ends. This is the last of the structure. Resist the urge to scribble foliage yet.", hint: "Stop while you can still count the main limbs.", guide: "tree-twigs" }
+    ]
+  },
+  {
+    id: "tree-canopy",
+    path: "trees",
+    title: "Canopy as clumps",
+    level: "Trees · 2",
+    minutes: 10,
+    blurb: "Do not draw leaves. Draw clouds of leaves sitting on the skeleton.",
+    steps: [
+      { title: "Place the masses", coach: "Think broccoli, not parsley. Big overlapping ovals first. Leave sky-holes so the canopy can breathe.", hint: "Some branches should still poke through.", guide: "tree-masses" },
+      { title: "Scribble the edge", coach: "A loose, wandering edge sells foliage. Keep the interior quieter than the silhouette.", hint: "Vary the pressure at the outline — broken edges feel alive.", guide: "tree-scribble" }
+    ]
+  },
+  {
+    id: "tree-value",
+    path: "trees",
+    title: "Core shadow & finish",
+    level: "Trees · 3",
+    minutes: 12,
+    blurb: "This is how Level 1 becomes Level ∞ — light direction, dark core, people for scale.",
+    steps: [
+      { title: "Decide the sun", coach: "Sun is upper-left. The right-hand and underside of each clump go darker. Leave a light cap on top of the canopy.", hint: "One light source. Don’t invent a second sun.", guide: "tree-sun" },
+      { title: "Pack the core", coach: "The darkest dark sits inside the crown, where clumps overlap and the trunk disappears. Hatch in the direction of growth.", hint: "If the tree still looks flat, the core is not dark enough.", guide: "tree-core" },
+      { title: "Ground and scale", coach: "A simple ground line, a cast shadow to the right, and two standing figures. People tell the viewer this is a real tree, not a broccoli floret.", hint: "Figures are about 1/6 the tree height. No faces needed.", guide: "tree-finish" }
+    ]
+  },
+  {
+    id: "tree-full",
+    path: "trees",
+    title: "One tree, start to finish",
+    level: "Studio",
+    minutes: 18,
+    blurb: "Run the whole method without stopping. Ghost guide stays faint so you lead.",
+    steps: [
+      { title: "Build it once", coach: "Skeleton → clumps → value → ground and people. Work in that order even if the guide shows the finished tree. Do not jump to leaves first.", hint: "Ten extra minutes of structure beats ten extra minutes of scribble.", guide: "tree-finish" }
+    ]
+  },
+  {
+    id: "wander",
+    path: "trees",
+    title: "Let a tree appear",
+    level: "Play",
+    minutes: 8,
+    blurb: "The other reel: no plan. Wander, then recognize.",
+    steps: [
+      { title: "Wander first", coach: "Fill the page with loose, looping lines. Don’t aim for a tree. After a minute, stop and ask: where is a trunk hiding? Darken that path.", hint: "Discovery, not construction. Keep 70% of the scribble.", guide: "wander" }
+    ]
+  },
+  {
+    id: "shop-block",
+    path: "architecture",
+    title: "Shop house in boxes",
+    level: "Street · 1",
+    minutes: 10,
+    blurb: "Japanese machiya / shophouse: get the big rectangles true before any tiles.",
+    steps: [
+      { title: "Ground, eaves, party walls", coach: "One horizon-ish ground line. Two vertical party walls. A slightly projecting eave. The facade is a stack of rectangles, not a picture of a house.", hint: "Measure with your pen: width vs height of the front.", guide: "shop-block" },
+      { title: "Floors and openings", coach: "Split the facade into storey bands. Ground floor is taller. Windows align on a grid — even when the woodwork is irregular.", hint: "Leave the door darker and slightly off-center.", guide: "shop-openings" }
+    ]
+  },
+  {
+    id: "shop-detail",
+    path: "architecture",
+    title: "Wood, tiles, signage",
+    level: "Street · 2",
+    minutes: 14,
+    blurb: "The timelapse layer: rhythm of tiles, noren, window bars, a figure on the street.",
+    steps: [
+      { title: "Rhythm, not inventory", coach: "Suggest tiles with repeating short strokes. Suggest bars with a few verticals, not all of them. The eye finishes the pattern.", hint: "Cluster detail near the entrance; let the upper wall stay quieter.", guide: "shop-detail" },
+      { title: "Street life", coach: "A bicycle or a person, a shadow under the eave, and a darker interior through the door. That’s what makes the shop feel open.", hint: "Cast shadows are more important than the sign lettering.", guide: "shop-life" }
+    ]
+  },
+  {
+    id: "figures",
+    path: "architecture",
+    title: "People for scale",
+    level: "Street · extra",
+    minutes: 6,
+    blurb: "Architectural figures are letters, not portraits: head-dot, coat, two legs.",
+    steps: [
+      { title: "The 6-mark figure", coach: "Oval head, sloped shoulders, a rectangle for the torso, two simple legs, optional bag. No hands, no face. Repeat across the row at different sizes.", hint: "Heads sit higher than you think. Legs are half the height.", guide: "figures" }
+    ]
+  }
+];
